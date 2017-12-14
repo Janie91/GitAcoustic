@@ -19,13 +19,12 @@ extern float u[4];
 extern map<float,float> standMp;
 extern CString strDirFile;
 extern int Ratio,Gain;
+extern int StartAngle,EndAngle;
 
 extern void CreateBurst(float f,float v,float wid,float perio);
 extern float CalSensity(float mp,float ux,float up,float dx,float dp);
 extern float CalResponse(float mp,float ux,float up,float d);
 extern void ScopeTrigger();
-
-
 
 #endif
 

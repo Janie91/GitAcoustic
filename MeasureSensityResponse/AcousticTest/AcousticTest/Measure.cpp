@@ -11,6 +11,7 @@
 #include "SetScopDlg.h"
 #include "SetConditionDlg.h"
 #include "SelectDlg.h"
+#include "TurnTable.h"
 #include "MyFunction.h"
 #include <vector>
 using namespace std;
@@ -57,6 +58,7 @@ BEGIN_MESSAGE_MAP(CMeasure, CDialogEx)
 	ON_BN_CLICKED(IDC_StopMea, &CMeasure::OnBnClickedStopmea)
 	ON_BN_CLICKED(IDC_quitSys, &CMeasure::OnBnClickedquitsys)
 	ON_COMMAND(ID_save, &CMeasure::Onsave)
+	ON_COMMAND(ID_turntable, &CMeasure::Onturntable)
 END_MESSAGE_MAP()
 
 
@@ -69,6 +71,8 @@ void Capture(vector<int> cha,int count);
 void MeasureSensity();
 void MeasureResponse();
 void huatu_response();
+void MeasureReciDir();
+CTurnTable turntable;
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -107,6 +111,13 @@ void CMeasure::OnBackselect()
 	// TODO: Add your command handler code here
 	this->SendMessage(WM_CLOSE);
 	GetParent()->ShowWindow(SW_SHOW);//显示选择测量选项的对话框	
+}
+
+void CMeasure::Onturntable()
+{
+	// TODO: 在此添加命令处理程序代码
+	//CTurnTable turntable;
+	turntable.DoModal();
 }
 
 void CMeasure::OnBnClickedView()
@@ -270,6 +281,9 @@ void CMeasure::OnBnClickedStartmea()
 		MeasureResponse();
 		SetTimer(2,1000,NULL);
 		break;
+	case 2:
+		MeasureReciDir();
+		SetTimer(3,1000,NULL);
 	}
 	
 	
@@ -804,4 +818,90 @@ void CMeasure::huatu_response()
 	}
 
 	pDC->SelectObject(pOldPen);
+}
+void CMeasure::MeasureReciDir()
+{
+	f=startf;
+	turntable.KillTimer(1);//关闭定时器，避免串口通信冲突。
+	float angle=turntable.ReadCurrentAngle();//读出当前的角度值
+	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
+	MessageBox("请根据提示选择各个通道的测量区域！");
+	viPrintf(vip,":timebase:mode window\n");
+	for(int i=0;i<4;i++)
+	{
+		if(isChaChoose[i])
+		{
+			CString s;
+			s.Format("完成选择通道%d的测量区域后点击确定",i+1);
+			MessageBox(s);
+			viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[i]);
+			viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[i]);
+		}
+	}
+	viPrintf(vip,":timebase:mode main\n");
+	viPrintf(vip,":run\n");
+	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	
+	if(abs(angle-StartAngle)>0.05)
+		turntable.RotateTargetAngle(StartAngle);
+	angle=turntable.ReadCurrentAngle();	
+	while(abs(angle-EndAngle)>0.05)
+	{
+		viPrintf(vip,":run\n");
+		viPrintf(vip,":timebase:mode window\n");
+		for(int i=0;i<4;i++)
+		{
+			if(isChaChoose[i])
+			{
+				float vrange,vtemp;
+				bool isok=true;
+				int flag=0;
+				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
+				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
+				viPrintf(vip,":measure:source channel%d\n",i+1);
+				viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				vtemp=u[i];
+				while(vtemp<-1e8||vrange<-1e8)
+				{
+					if(flag>10)
+					{
+						isok=false;
+						break;
+					}
+					flag++;
+					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				}
+				while(vtemp>vrange/8.0*4) 
+				{
+					viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
+					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					isok=false;
+				}
+				//波形显示小于两格
+				while(vtemp<vrange/8.0*2)
+				{
+					viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					isok=false;
+				}
+				if(isok==false)
+				{
+					u[i]=0;
+					i=i-1;//此通道重新测量一遍
+					
+				}
+				angle=turntable.ReadCurrentAngle();	
+			}
+		}
+		//保存角度和电压值
+		//绘制极坐标图
+		angle=turntable.ReadCurrentAngle();	
+	}
+
+	viPrintf(vip,":timebase:mode main\n");
+
 }

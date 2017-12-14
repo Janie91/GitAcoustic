@@ -37,5 +37,7 @@ public:
 	void MeasureSensity();
 	void MeasureResponse();
 	void huatu_response();
+	void MeasureReciDir();
 	
+	afx_msg void Onturntable();
 };

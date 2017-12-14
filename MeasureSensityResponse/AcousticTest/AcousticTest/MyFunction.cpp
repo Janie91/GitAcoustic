@@ -14,6 +14,7 @@ float u[4]={-1.0,-1.0,-1.0,-1.0};
 map<float,float> standMp;
 CString strDirFile="";
 int Ratio=100,Gain=1;
+int StartAngle=-180,EndAngle=180;
 
 void CreateBurst(float f,float v,float wid,float perio)
 {
