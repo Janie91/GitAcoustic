@@ -1,5 +1,5 @@
 #pragma once
-
+#include "TurnTable.h"
 #include <vector>
 using namespace std;
 // CMeasure dialog
@@ -40,4 +40,6 @@ public:
 	void MeasureReciDir();
 	
 	afx_msg void Onturntable();
+private:
+	CTurnTable *pturntable;
 };

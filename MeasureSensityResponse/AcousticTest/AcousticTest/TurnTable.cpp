@@ -25,7 +25,6 @@ CTurnTable::CTurnTable(CWnd* pParent /*=NULL*/)
 
 CTurnTable::~CTurnTable()
 {
-	KillTimer(1);
 	if(m_mscom.get_PortOpen())
 		m_mscom.put_PortOpen(false);
 }
@@ -206,10 +205,10 @@ float CTurnTable::ReadCurrentAngle()
 	VARIANT retVal=m_mscom.get_Input();
 	CString str;
 	str=retVal.bstrVal;//因为串口返回的是字符串类型的，retVal的vt是VT_BSTR
-	if(str.Mid(5,2)!="00")
-	{
-		AfxMessageBox("读取角度操作出错!");
-	}
+	//if(str.Mid(5,2)!="00")
+	//{
+	//	AfxMessageBox("读取角度操作出错!");
+	//}
 	int temp;
 	CString anglestring;
 	anglestring.Append(str.Mid(7,1));
@@ -741,7 +740,7 @@ void CTurnTable::RotateTargetAngle(int targetangle)
 	Sleep(200);
 	StopRotate();
 	Sleep(100);
-	m_Speed=GetDlgItemInt(IDC_SetSpeed);
+	m_Speed=GetDlgItemInt(IDC_Speed);
 	SetSpeed(m_Speed);
 	SetTargetAngle(targetangle);
 	PositionStart();
@@ -751,7 +750,7 @@ void CTurnTable::OnBnClickedRotateright()
 	// TODO: Add your control notification handler code here
 	CString str;
 	SetManual();
-	m_Speed=GetDlgItemInt(IDC_SetSpeed);
+	m_Speed=GetDlgItemInt(IDC_Speed);
 	GetDlgItemTextA(IDC_RotateRight,str);
 	if(str=="顺时针转")
 	{
@@ -771,7 +770,7 @@ void CTurnTable::OnBnClickedRotateleft()
 	// TODO: Add your control notification handler code here
 	CString str;
 	SetManual();
-	m_Speed=GetDlgItemInt(IDC_SetSpeed);
+	m_Speed=GetDlgItemInt(IDC_Speed);
 	GetDlgItemTextA(IDC_RotateLeft,str);
 	if(str=="逆时针转")
 	{

@@ -47,7 +47,7 @@ BOOL CSelectDlg::OnInitDialog()
 	
 	// TODO:  在此添加额外的初始化
 	//AfxGetMainWnd()->SendMessage(WM_CLOSE);//把选择测量项目的前一个进入系统的主对话框关闭
-	AfxGetMainWnd()->ShowWindow(SW_HIDE);//把选择测量项目的前一个进入系统的主对话框隐藏
+	//AfxGetMainWnd()->ShowWindow(SW_HIDE);//把选择测量项目的前一个进入系统的主对话框隐藏
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }

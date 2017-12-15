@@ -11,7 +11,6 @@
 #include "SetScopDlg.h"
 #include "SetConditionDlg.h"
 #include "SelectDlg.h"
-#include "TurnTable.h"
 #include "MyFunction.h"
 #include <vector>
 using namespace std;
@@ -24,7 +23,9 @@ using namespace std;
 #include "CWorksheets.h"
 
 vector<vector<float>>Result(4,vector<float>(0));
+vector<float> MeaAngle;
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
+bool isTimer[3]={false,false,false};
 //...end...
 
 // CMeasure dialog
@@ -39,6 +40,7 @@ CMeasure::CMeasure(CWnd* pParent /*=NULL*/)
 
 CMeasure::~CMeasure()
 {
+	delete pturntable;
 }
 
 void CMeasure::DoDataExchange(CDataExchange* pDX)
@@ -72,7 +74,7 @@ void MeasureSensity();
 void MeasureResponse();
 void huatu_response();
 void MeasureReciDir();
-CTurnTable turntable;
+
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -84,7 +86,7 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 	GetDlgItem(IDC_picture)->GetClientRect(&rect);
 	GetDlgItem(IDC_picture)->MoveWindow(50,50,800,600,true); 
 	//固定Picture Control控件的位置和大小 
-
+	pturntable = new CTurnTable(); //给指针分配内存  
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -116,8 +118,9 @@ void CMeasure::OnBackselect()
 void CMeasure::Onturntable()
 {
 	// TODO: 在此添加命令处理程序代码
-	//CTurnTable turntable;
-	turntable.DoModal();
+	
+	pturntable->Create(IDD_turntable); //创建一个非模态对话框  
+	pturntable->ShowWindow(SW_SHOWNORMAL); //显示非模态对话框  
 }
 
 void CMeasure::OnBnClickedView()
@@ -299,8 +302,10 @@ void CMeasure::OnBnClickedStopmea()
 void CMeasure::OnBnClickedquitsys()
 {
 	// TODO: Add your control notification handler code here
-	KillTimer(1);
-	KillTimer(2);
+	for(int i=0;i<3;i++)
+	{
+		if(isTimer[i]) KillTimer(i+1);
+	}
 	viClose(vip);
 	viClose(vig);
 	viClose(vidp);
@@ -355,6 +360,12 @@ void CMeasure::Onsave()
 		range.put_Item(_variant_t((long)1),_variant_t((long)2),
 				_variant_t("发射电压响应级(dB)"));
 		break;
+	case 2:
+		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("角度(°)"));
+		range.put_Item(_variant_t((long)1),_variant_t((long)2),
+				_variant_t("电压(V)"));
+		break;
 
 	}
 	
@@ -380,7 +391,9 @@ void CMeasure::Onsave()
 			for(unsigned int j=0;j<Result[i].size();j++)
 			{
 				//设置j+2排的第1列数据
-				range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
+				if(ChooseItem==2) range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
+					_variant_t(MeaAngle[j]));
+				else range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
 					_variant_t(startf+deltaf*j));
 				//设置j+2排的第2列数据或第3列……
 				range.put_Item(_variant_t((long)(j+2)),_variant_t((long)col),
@@ -414,9 +427,9 @@ void CMeasure::OnTimer(UINT_PTR nIDEvent)
 	switch(nIDEvent)
 	{
 	case 1:
-		huatu_sensity();break;
+		huatu_sensity();isTimer[0]=true;break;
 	case 2:
-		huatu_response();break;
+		huatu_response();isTimer[1]=true;break;
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -822,8 +835,8 @@ void CMeasure::huatu_response()
 void CMeasure::MeasureReciDir()
 {
 	f=startf;
-	turntable.KillTimer(1);//关闭定时器，避免串口通信冲突。
-	float angle=turntable.ReadCurrentAngle();//读出当前的角度值
+	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
+	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
@@ -843,9 +856,13 @@ void CMeasure::MeasureReciDir()
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
 	
 	if(abs(angle-StartAngle)>0.05)
-		turntable.RotateTargetAngle(StartAngle);
-	angle=turntable.ReadCurrentAngle();	
-	while(abs(angle-EndAngle)>0.05)
+		pturntable->RotateTargetAngle(StartAngle);
+	Sleep(1000);
+	pturntable->RotateRight();
+	Sleep(200);
+	angle=pturntable->ReadCurrentAngle();
+	float de=EndAngle-angle;
+	while(de>0.05)
 	{
 		viPrintf(vip,":run\n");
 		viPrintf(vip,":timebase:mode window\n");
@@ -894,14 +911,22 @@ void CMeasure::MeasureReciDir()
 					i=i-1;//此通道重新测量一遍
 					
 				}
-				angle=turntable.ReadCurrentAngle();	
+				angle=pturntable->ReadCurrentAngle();
+				Sleep(200);
 			}
 		}
 		//保存角度和电压值
+		for(int i=0;i<4;i++)
+		{
+			if(!isChaChoose[i]) continue;
+			Result[i].push_back(u[i]);
+		}
+		MeaAngle.push_back(angle);
 		//绘制极坐标图
-		angle=turntable.ReadCurrentAngle();	
+		angle=pturntable->ReadCurrentAngle();
+		de=EndAngle-angle;
 	}
-
+	pturntable->StopRotateRight();
 	viPrintf(vip,":timebase:mode main\n");
 
 }
