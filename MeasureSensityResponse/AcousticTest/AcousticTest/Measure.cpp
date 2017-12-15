@@ -855,10 +855,9 @@ void CMeasure::MeasureReciDir()
 	viPrintf(vip,":run\n");
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
 	
-	if(abs(angle-StartAngle)>0.05)
-		pturntable->RotateTargetAngle(StartAngle);
+	pturntable->RotateTargetAngle(StartAngle);//直接调用转到指定角度的函数，还是要先比较当前角度。
 	Sleep(1000);
-	pturntable->RotateRight();
+	pturntable->RotateRight();//转动起来
 	Sleep(200);
 	angle=pturntable->ReadCurrentAngle();
 	float de=EndAngle-angle;
