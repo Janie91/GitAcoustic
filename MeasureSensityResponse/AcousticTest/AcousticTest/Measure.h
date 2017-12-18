@@ -38,6 +38,7 @@ public:
 	void MeasureResponse();
 	void huatu_response();
 	void MeasureReciDir();
+	void huatu_recidir();
 	
 	afx_msg void Onturntable();
 private:

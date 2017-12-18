@@ -57,6 +57,7 @@ BOOL CTurnTable::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	// TODO:  Add extra initialization here
+	SetWindowPos(NULL,50,80,0,0,SWP_NOZORDER | SWP_NOSIZE);
 	if(m_mscom.get_PortOpen())
 		m_mscom.put_PortOpen(false); 
 	//直接在串口控件的属性中设置了以下这些参数

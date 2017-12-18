@@ -26,6 +26,7 @@ vector<vector<float>>Result(4,vector<float>(0));
 vector<float> MeaAngle;
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
 bool isTimer[3]={false,false,false};
+const float PI=3.1415926f;
 //...end...
 
 // CMeasure dialog
@@ -35,12 +36,12 @@ IMPLEMENT_DYNAMIC(CMeasure, CDialogEx)
 CMeasure::CMeasure(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMeasure::IDD, pParent)
 {
-
+	pturntable=NULL;
 }
 
 CMeasure::~CMeasure()
 {
-	delete pturntable;
+	if(pturntable!=NULL) delete pturntable;
 }
 
 void CMeasure::DoDataExchange(CDataExchange* pDX)
@@ -74,7 +75,7 @@ void MeasureSensity();
 void MeasureResponse();
 void huatu_response();
 void MeasureReciDir();
-
+void huatu_recidir();
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -86,7 +87,7 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 	GetDlgItem(IDC_picture)->GetClientRect(&rect);
 	GetDlgItem(IDC_picture)->MoveWindow(50,50,800,600,true); 
 	//固定Picture Control控件的位置和大小 
-	pturntable = new CTurnTable(); //给指针分配内存  
+	 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -118,7 +119,7 @@ void CMeasure::OnBackselect()
 void CMeasure::Onturntable()
 {
 	// TODO: 在此添加命令处理程序代码
-	
+	pturntable = new CTurnTable(); //给指针分配内存 
 	pturntable->Create(IDD_turntable); //创建一个非模态对话框  
 	pturntable->ShowWindow(SW_SHOWNORMAL); //显示非模态对话框  
 }
@@ -295,8 +296,7 @@ void CMeasure::OnBnClickedStartmea()
 void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
-	KillTimer(1);
-	huatu_sensity();
+	huatu_recidir();
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -838,6 +838,7 @@ void CMeasure::MeasureReciDir()
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
+	pturntable->RotateTargetAngle(StartAngle);//直接调用转到指定角度的函数，还是要先比较当前角度。
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -854,14 +855,13 @@ void CMeasure::MeasureReciDir()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
-	
-	pturntable->RotateTargetAngle(StartAngle);//直接调用转到指定角度的函数，还是要先比较当前角度。
-	Sleep(1000);
 	pturntable->RotateRight();//转动起来
 	Sleep(200);
 	angle=pturntable->ReadCurrentAngle();
-	float de=EndAngle-angle;
-	while(de>0.05)
+	pturntable->m_CurrentAngle.Format("%.1f°",angle);
+	pturntable->SetDlgItemText(IDC_CurrentAngle,pturntable->m_CurrentAngle);//在turntable上显示角度
+	
+	while(angle<EndAngle)
 	{
 		viPrintf(vip,":run\n");
 		viPrintf(vip,":timebase:mode window\n");
@@ -911,6 +911,8 @@ void CMeasure::MeasureReciDir()
 					
 				}
 				angle=pturntable->ReadCurrentAngle();
+				pturntable->m_CurrentAngle.Format("%.1f°",angle);
+				pturntable->SetDlgItemText(IDC_CurrentAngle,pturntable->m_CurrentAngle);
 				Sleep(200);
 			}
 		}
@@ -922,10 +924,97 @@ void CMeasure::MeasureReciDir()
 		}
 		MeaAngle.push_back(angle);
 		//绘制极坐标图
+		huatu_recidir();
 		angle=pturntable->ReadCurrentAngle();
-		de=EndAngle-angle;
+		if(angle>EndAngle) 
+		{
+			pturntable->StopRotateRight();
+			break;
+		}
 	}
 	pturntable->StopRotateRight();
 	viPrintf(vip,":timebase:mode main\n");
+	pturntable->SetTimer(1,200,NULL);
+}
+void CMeasure::huatu_recidir()
+{
+	int cycle_num=10,redius_num=36;
+	CWnd *pWnd = GetDlgItem(IDC_picture);
+	CRect rect;
+	pWnd->GetClientRect(rect);
+	CDC *pDC = pWnd->GetDC();
+	CPen newPen;
+	newPen.CreatePen(PS_SOLID, 1, RGB(0,0,0));
+	CPen* pOldPen = (CPen*)pDC->SelectObject(&newPen);
+	pDC->SelectStockObject(NULL_BRUSH);
+	//画圆
+	int w=rect.Width(),h=rect.Height ();
+	pDC->SetViewportOrg(w/2,h/2);
+	int R=(h-40)/2;
+	int deltaR=R/cycle_num;
+	for(int i=1;i<=cycle_num;i++)
+	{
+		pDC->Ellipse(-i*deltaR,-i*deltaR,i*deltaR,i*deltaR);
+	}
+	pDC->Ellipse(-cycle_num*deltaR,-cycle_num*deltaR,cycle_num*deltaR,cycle_num*deltaR);
+	float deltaA=2*PI/redius_num;
+	int x,y;
+	for(int i=0;i<=redius_num/2;i++)
+	{
+		pDC->MoveTo(0,0);
+		x=(int)(R*sin(i*deltaA));
+		y=(int)(R*cos(i*deltaA));
+		pDC->LineTo(x,y);
+		pDC->MoveTo(0,0);
+		x=(int)(R*sin(-i*deltaA));
+		y=(int)(R*cos(-i*deltaA));
+		pDC->LineTo(x,y);
+	}
 
+	//debug
+	CPen ppen;
+	ppen.CreatePen(PS_SOLID, 1, RGB(255,0,0));
+	pOldPen=pDC->SelectObject(&ppen);
+	float Result[9]={3.2f,18.8f,10.5f,20.6f,30.0f,23.9f,9.6f,16.8f,7.5f};
+	float MeaAngle[9]={-28.7f,-22.6f,-18.9f,-9.2f,-0.1f,2.3f,8.4f,18.2f,29.9f};
+	pDC->MoveTo(0,0);
+	float max=Result[0];
+	for(unsigned int i=1;i<9;i++)
+				if(max<Result[i]) max=Result[i];
+	for(unsigned int i=0;i<9;i++)
+	{
+		deltaA=PI*MeaAngle[i]/180;
+		x=-(int)(Result[i]/max*R*sin(deltaA));
+		y=-(int)(Result[i]/max*R*cos(deltaA));
+		pDC->LineTo(x,y);//连接两个点
+	}
+
+	//debug
+	//CPen pPen[4];
+	//pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
+	//pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
+	//pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
+	//pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	//
+	//for(int ch=0;ch<4;ch++)
+	//{
+	//	if(isChaChoose[ch])
+	//	{
+	//		pOldPen=pDC->SelectObject(&pPen[ch]);
+	//		if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
+	//		pDC->MoveTo(0,0);//将画笔移到圆心
+	//		float max=Result[ch][0];
+	//		for(unsigned int i=1;i<Result[ch].size();i++)
+	//			if(max<Result[ch][i]) max=Result[ch][i];
+	//		for(unsigned int i=0;i<Result[ch].size();i++)
+	//		{
+	//			deltaA=PI*MeaAngle[i]/180;
+	//			x=(int)(Result[ch][i]/max*R*sin(deltaA));
+	//			y=(int)(Result[ch][i]/max*R*cos(deltaA));
+	//			pDC->LineTo(x,y);//连接两个点
+	//		}
+	//	}
+	//}
+
+	pDC->SelectObject(pOldPen);
 }
