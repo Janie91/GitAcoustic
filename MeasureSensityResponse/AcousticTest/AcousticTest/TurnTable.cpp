@@ -222,7 +222,7 @@ float CTurnTable::ReadCurrentAngle()
 	float angle=temp/10.0f;
 	m_CurrentAngle.Format("%.1f¡ã",angle);
 	SetDlgItemText(IDC_CurrentAngle,m_CurrentAngle);
-	//UpdateData(false);
+	Sleep(100);
 	return angle;
 }
 

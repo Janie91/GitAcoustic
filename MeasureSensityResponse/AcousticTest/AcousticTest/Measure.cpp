@@ -430,6 +430,8 @@ void CMeasure::OnTimer(UINT_PTR nIDEvent)
 		huatu_sensity();isTimer[0]=true;break;
 	case 2:
 		huatu_response();isTimer[1]=true;break;
+	case 3:
+		huatu_recidir();isTimer[2]=true;break;
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -838,7 +840,12 @@ void CMeasure::MeasureReciDir()
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
-	pturntable->RotateTargetAngle(StartAngle);//直接调用转到指定角度的函数，还是要先比较当前角度。
+	pturntable->RotateTargetAngle(StartAngle);//直接调用转到指定角度的函数。
+	angle=pturntable->ReadCurrentAngle();
+	while(abs(angle-StartAngle)>1)
+	{
+		angle=pturntable->ReadCurrentAngle();
+	}
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -857,10 +864,7 @@ void CMeasure::MeasureReciDir()
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
 	pturntable->RotateRight();//转动起来
 	Sleep(200);
-	angle=pturntable->ReadCurrentAngle();
-	pturntable->m_CurrentAngle.Format("%.1f°",angle);
-	pturntable->SetDlgItemText(IDC_CurrentAngle,pturntable->m_CurrentAngle);//在turntable上显示角度
-	
+	angle=pturntable->ReadCurrentAngle();	
 	while(angle<EndAngle)
 	{
 		viPrintf(vip,":run\n");
@@ -911,9 +915,8 @@ void CMeasure::MeasureReciDir()
 					
 				}
 				angle=pturntable->ReadCurrentAngle();
-				pturntable->m_CurrentAngle.Format("%.1f°",angle);
-				pturntable->SetDlgItemText(IDC_CurrentAngle,pturntable->m_CurrentAngle);
 				Sleep(200);
+				MeaAngle.push_back(angle);
 			}
 		}
 		//保存角度和电压值
@@ -922,7 +925,7 @@ void CMeasure::MeasureReciDir()
 			if(!isChaChoose[i]) continue;
 			Result[i].push_back(u[i]);
 		}
-		MeaAngle.push_back(angle);
+		
 		//绘制极坐标图
 		huatu_recidir();
 		angle=pturntable->ReadCurrentAngle();
@@ -971,50 +974,52 @@ void CMeasure::huatu_recidir()
 		pDC->LineTo(x,y);
 	}
 
-	//debug
-	CPen ppen;
-	ppen.CreatePen(PS_SOLID, 1, RGB(255,0,0));
-	pOldPen=pDC->SelectObject(&ppen);
-	float Result[9]={3.2f,18.8f,10.5f,20.6f,30.0f,23.9f,9.6f,16.8f,7.5f};
-	float MeaAngle[9]={-28.7f,-22.6f,-18.9f,-9.2f,-0.1f,2.3f,8.4f,18.2f,29.9f};
-	pDC->MoveTo(0,0);
-	float max=Result[0];
-	for(unsigned int i=1;i<9;i++)
-				if(max<Result[i]) max=Result[i];
-	for(unsigned int i=0;i<9;i++)
-	{
-		deltaA=PI*MeaAngle[i]/180;
-		x=-(int)(Result[i]/max*R*sin(deltaA));
-		y=-(int)(Result[i]/max*R*cos(deltaA));
-		pDC->LineTo(x,y);//连接两个点
-	}
-
-	//debug
-	//CPen pPen[4];
-	//pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
-	//pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
-	//pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
-	//pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
-	//
-	//for(int ch=0;ch<4;ch++)
+	////debug
+	//CPen ppen;
+	//ppen.CreatePen(PS_SOLID, 1, RGB(255,0,0));
+	//pOldPen=pDC->SelectObject(&ppen);
+	//float Result[9]={3.2f,18.8f,10.5f,20.6f,30.0f,23.9f,9.6f,16.8f,7.5f};
+	//float MeaAngle[9]={-28.7f,-22.6f,-18.9f,-9.2f,-0.1f,2.3f,8.4f,18.2f,29.9f};
+	//pDC->MoveTo(0,0);
+	//float max=Result[0];
+	//for(unsigned int i=1;i<9;i++)
+	//			if(max<Result[i]) max=Result[i];
+	//for(unsigned int i=0;i<9;i++)
 	//{
-	//	if(isChaChoose[ch])
-	//	{
-	//		pOldPen=pDC->SelectObject(&pPen[ch]);
-	//		if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
-	//		pDC->MoveTo(0,0);//将画笔移到圆心
-	//		float max=Result[ch][0];
-	//		for(unsigned int i=1;i<Result[ch].size();i++)
-	//			if(max<Result[ch][i]) max=Result[ch][i];
-	//		for(unsigned int i=0;i<Result[ch].size();i++)
-	//		{
-	//			deltaA=PI*MeaAngle[i]/180;
-	//			x=(int)(Result[ch][i]/max*R*sin(deltaA));
-	//			y=(int)(Result[ch][i]/max*R*cos(deltaA));
-	//			pDC->LineTo(x,y);//连接两个点
-	//		}
-	//	}
+	//	deltaA=PI*MeaAngle[i]/180;
+	//	x=-(int)(Result[i]/max*R*sin(deltaA));
+	//	y=-(int)(Result[i]/max*R*cos(deltaA));
+	//	pDC->LineTo(x,y);//连接两个点
 	//}
+
+	////debug
+	CPen pPen[4];
+	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	
+	for(int ch=0;ch<4;ch++)
+	{
+		if(isChaChoose[ch])
+		{
+			pOldPen=pDC->SelectObject(&pPen[ch]);
+			if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
+			
+			float max=Result[ch][0];
+			for(unsigned int i=1;i<Result[ch].size();i++)
+				if(max<Result[ch][i]) max=Result[ch][i];
+			deltaA=PI*MeaAngle[0]/180;
+			pDC->MoveTo((int)(Result[ch][0]/max*R*sin(deltaA)),-(int)(Result[ch][0]/max*R*cos(deltaA)));//将画笔移到圆心
+			for(unsigned int i=1;i<Result[ch].size();i++)
+			{
+				deltaA=PI*MeaAngle[i]/180;
+				x=(int)(Result[ch][i]/max*R*sin(deltaA));
+				y=-(int)(Result[ch][i]/max*R*cos(deltaA));
+				pDC->LineTo(x,y);//连接两个点
+			}
+		}
+	}
 
 	pDC->SelectObject(pOldPen);
 }
