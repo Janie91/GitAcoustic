@@ -839,13 +839,23 @@ void CMeasure::MeasureReciDir()
 	f=startf;
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
+	bool isRightDir=true;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
-	pturntable->RotateTargetAngle(StartAngle);//直接调用转到指定角度的函数。
+	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
+	{
+		pturntable->RotateTargetAngle(StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
+		isRightDir=true;
+	}
+	else 
+	{
+		pturntable->RotateTargetAngle(EndAngle);
+		isRightDir=false;
+	}
 	angle=pturntable->ReadCurrentAngle();
-	while(abs(angle-StartAngle)>1)
+	while(abs(angle-StartAngle)>0.1)//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
 	{
 		angle=pturntable->ReadCurrentAngle();
-	}
+	}//等待转到指定角度完成
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -862,10 +872,11 @@ void CMeasure::MeasureReciDir()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
-	pturntable->RotateRight();//转动起来
+	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
+	else pturntable->RotateLeft();//逆时针转动
 	Sleep(200);
 	angle=pturntable->ReadCurrentAngle();	
-	while(angle<EndAngle)
+	while((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle))
 	{
 		viPrintf(vip,":run\n");
 		viPrintf(vip,":timebase:mode window\n");
@@ -929,13 +940,19 @@ void CMeasure::MeasureReciDir()
 		//绘制极坐标图
 		huatu_recidir();
 		angle=pturntable->ReadCurrentAngle();
-		if(angle>EndAngle) 
+		if(isRightDir&&angle>=EndAngle)
 		{
 			pturntable->StopRotateRight();
 			break;
 		}
+		else if(!isRightDir&&angle<=StartAngle)
+		{
+			pturntable->StopRotateLeft();
+			break;
+		}		
 	}
-	pturntable->StopRotateRight();
+	if(isRightDir) pturntable->StopRotateRight();
+	else pturntable->StopRotateLeft();
 	viPrintf(vip,":timebase:mode main\n");
 	pturntable->SetTimer(1,200,NULL);
 }
