@@ -6,7 +6,7 @@
 #include <map>
 #include<vector>
 using namespace std;
-
+const float PI=3.1415926f;
 extern ViSession vidg,vidp,vig,vip;
 extern long status;
 extern int ChooseItem;
@@ -25,6 +25,7 @@ extern void CreateBurst(float f,float v,float wid,float perio);
 extern float CalSensity(float mp,float ux,float up,float dx,float dp);
 extern float CalResponse(float mp,float ux,float up,float d);
 extern void ScopeTrigger();
+extern void CreateMulFrePulse(float f1,float v,float width,float deltaf);
 
 #endif
 

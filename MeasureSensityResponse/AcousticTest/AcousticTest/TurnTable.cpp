@@ -50,6 +50,7 @@ BEGIN_MESSAGE_MAP(CTurnTable, CDialog)
 	ON_BN_CLICKED(IDC_RotateSetAngle, &CTurnTable::OnBnClickedRotatesetangle)
 	ON_BN_CLICKED(IDC_StopRotate, &CTurnTable::OnBnClickedStoprotate)
 	ON_WM_TIMER()
+	ON_WM_PAINT()
 END_MESSAGE_MAP()
 
 BOOL CTurnTable::OnInitDialog()
@@ -222,7 +223,7 @@ float CTurnTable::ReadCurrentAngle()
 	float angle=temp/10.0f;
 	m_CurrentAngle.Format("%.1f°",angle);
 	SetDlgItemText(IDC_CurrentAngle,m_CurrentAngle);
-	Sleep(100);
+	Sleep(200);
 	return angle;
 }
 
@@ -834,3 +835,12 @@ void CTurnTable::OnBnClickedquit()
 
 
 
+
+
+void CTurnTable::OnPaint()//在turntable的重绘函数中添加了显示角度的函数，不知道测量的时候能不能一直看到变化
+{
+	CPaintDC dc(this); // device context for painting
+	// TODO: Add your message handler code here
+	// Do not call CDialog::OnPaint() for painting messages
+	SetDlgItemText(IDC_CurrentAngle,m_CurrentAngle);
+}

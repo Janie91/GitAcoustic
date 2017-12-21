@@ -55,4 +55,5 @@ public:
 	virtual BOOL OnInitDialog();
 	int m_StartAngle;
 	int m_EndAngle;
+	afx_msg void OnPaint();
 };

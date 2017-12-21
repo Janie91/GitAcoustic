@@ -26,7 +26,8 @@ vector<vector<float>>Result(4,vector<float>(0));
 vector<float> MeaAngle;
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
 bool isTimer[3]={false,false,false};
-const float PI=3.1415926f;
+bool isMeasure=true;
+
 //...end...
 
 // CMeasure dialog
@@ -296,7 +297,7 @@ void CMeasure::OnBnClickedStartmea()
 void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
-	huatu_recidir();
+	isMeasure=false;
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -439,6 +440,7 @@ void CMeasure::OnTimer(UINT_PTR nIDEvent)
 void CMeasure::renew()
 {
 	f=startf;
+	isMeasure=true;
 	for(int i=0;i<4;i++)
 	{
 		u[i]=-1.0;
@@ -584,8 +586,19 @@ void CMeasure::MeasureSensity()
 	viPrintf(vip,":run\n");
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
 	f=startf;
-	while(f<=endf)
+	isMeasure=true;
+	while(isMeasure&&f<=endf)
 	{
+		//用来接收“停止测量”按钮按下的消息
+		MSG  msg;
+		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+		{          
+			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
+					break ;          
+			TranslateMessage (&msg) ;          
+			DispatchMessage (&msg) ;          
+		} 
+
 		viPrintf(vip,":run\n");
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		//Capture(ch,chcount);
@@ -683,8 +696,18 @@ void CMeasure::MeasureResponse()
 	viPrintf(vip,":run\n");
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
 	f=startf;
-	while(f<=endf)
+	isMeasure=true;
+	while(isMeasure&&f<=endf)
 	{
+		//用来接收“停止测量”按钮按下的消息
+		MSG  msg;
+		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+		{          
+			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
+					break ;          
+			TranslateMessage (&msg) ;          
+			DispatchMessage (&msg) ;          
+		} 
 		viPrintf(vip,":run\n");
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		//Capture(ch,chcount);
@@ -837,6 +860,7 @@ void CMeasure::huatu_response()
 void CMeasure::MeasureReciDir()
 {
 	f=startf;
+	isMeasure=true;
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
@@ -878,6 +902,15 @@ void CMeasure::MeasureReciDir()
 	angle=pturntable->ReadCurrentAngle();	
 	while((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle))
 	{
+		//用来接收“停止测量”按钮按下的消息
+		MSG  msg;
+		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+		{          
+			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
+					break ;          
+			TranslateMessage (&msg) ;          
+			DispatchMessage (&msg) ;          
+		}
 		viPrintf(vip,":run\n");
 		viPrintf(vip,":timebase:mode window\n");
 		for(int i=0;i<4;i++)
@@ -958,7 +991,7 @@ void CMeasure::MeasureReciDir()
 }
 void CMeasure::huatu_recidir()
 {
-	int cycle_num=10,redius_num=36;
+	int cycle_num=10,redius_num=36;//cycle_num是同心圆的个数，redius_num是直径的条数
 	CWnd *pWnd = GetDlgItem(IDC_picture);
 	CRect rect;
 	pWnd->GetClientRect(rect);
@@ -966,17 +999,16 @@ void CMeasure::huatu_recidir()
 	CPen newPen;
 	newPen.CreatePen(PS_SOLID, 1, RGB(0,0,0));
 	CPen* pOldPen = (CPen*)pDC->SelectObject(&newPen);
-	pDC->SelectStockObject(NULL_BRUSH);
-	//画圆
+	pDC->SelectStockObject(NULL_BRUSH);//没有画刷就避免圆被覆盖，画的空心圆
 	int w=rect.Width(),h=rect.Height ();
-	pDC->SetViewportOrg(w/2,h/2);
-	int R=(h-40)/2;
+	pDC->SetViewportOrg(w/2,h/2);//设置原点
+	int R=(h-40)/2;//半径
 	int deltaR=R/cycle_num;
 	for(int i=1;i<=cycle_num;i++)
 	{
-		pDC->Ellipse(-i*deltaR,-i*deltaR,i*deltaR,i*deltaR);
+		pDC->Ellipse(-i*deltaR,-i*deltaR,i*deltaR,i*deltaR);//画圆，其实是找到一个外切正方形的左上角顶点和右下角顶点
 	}
-	pDC->Ellipse(-cycle_num*deltaR,-cycle_num*deltaR,cycle_num*deltaR,cycle_num*deltaR);
+	pDC->Ellipse(-cycle_num*deltaR,-cycle_num*deltaR,cycle_num*deltaR,cycle_num*deltaR);//最外面的圆
 	float deltaA=2*PI/redius_num;
 	int x,y;
 	for(int i=0;i<=redius_num/2;i++)
@@ -984,11 +1016,11 @@ void CMeasure::huatu_recidir()
 		pDC->MoveTo(0,0);
 		x=(int)(R*sin(i*deltaA));
 		y=(int)(R*cos(i*deltaA));
-		pDC->LineTo(x,y);
+		pDC->LineTo(x,y);//画了一、四象限的半径
 		pDC->MoveTo(0,0);
 		x=(int)(R*sin(-i*deltaA));
 		y=(int)(R*cos(-i*deltaA));
-		pDC->LineTo(x,y);
+		pDC->LineTo(x,y);//画了二三象限的半径
 	}
 
 	////debug

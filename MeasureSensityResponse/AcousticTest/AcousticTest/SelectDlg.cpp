@@ -62,9 +62,13 @@ void CSelectDlg::OnBnClickedselect()
 	case 1:
 		ChooseItem=1;break;//发射电压响应
 	case 2:
-		ChooseItem=2;break;//单频点指向性
+		ChooseItem=2;break;//单频点接收指向性
 	case 3:
-		ChooseItem=3;break;//多频点指向性
+		ChooseItem=3;break;//单频点发射指向性
+	case 4:
+		ChooseItem=4;break;//多频点接收指向性
+	case 5:
+		ChooseItem=5;break;//互易法测量
 	}
 	CMeasure mdlg;
 	mdlg.DoModal();
