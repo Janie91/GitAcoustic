@@ -298,7 +298,7 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	CreateMulFrePulse(1,0.5f,1);
+	CreateMulFrePulse(startf*1000,v/1000,deltaf*1000);
 }
 
 void CMeasure::OnBnClickedquitsys()
