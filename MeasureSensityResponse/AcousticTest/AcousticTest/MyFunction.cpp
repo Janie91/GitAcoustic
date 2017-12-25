@@ -73,7 +73,10 @@ void CreateMulFrePulse(float f1,float v,float delf)
 	for(int i=0;i<4;i++)
 	{
 		for(int j=0;j<point;j++)
+		{
+			if(i==0&&j==0) sprintf_s(SCPIcmd,"%s, %4.2f",SCPIcmd,sin(2*PI*(f1*1000+i*delf*1000)*j/fs));//data volitile与第一个数之间有个空格
 			sprintf_s(SCPIcmd,"%s,%4.2f",SCPIcmd,sin(2*PI*(f1*1000+i*delf*1000)*j/fs));//使用ASCII码的方式载入数据
+		}
 		for(int k=0;k<points-point;k++)
 			strcat_s(SCPIcmd,",0");
 	}
