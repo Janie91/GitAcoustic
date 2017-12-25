@@ -298,6 +298,7 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
+	CreateMulFrePulse(1,0.5f,1);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -861,6 +862,11 @@ void CMeasure::MeasureReciDir()
 {
 	f=startf;
 	isMeasure=true;
+	if(pturntable==NULL) 
+	{
+		AfxMessageBox("请先连接控制回转系统！");
+		return;
+	}
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
