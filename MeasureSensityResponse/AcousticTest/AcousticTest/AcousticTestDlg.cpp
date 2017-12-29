@@ -104,8 +104,8 @@ BOOL CAcousticTestDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	//...My code...
-	SetDlgItemText(IDC_SigName,"TCPIP0::223.3.62.28::inst0::INSTR");
-	SetDlgItemText(IDC_ScopName,"TCPIP0::223.3.62.38::inst0::INSTR");
+	SetDlgItemText(IDC_SigName,"TCPIP0::223.3.37.15::inst0::INSTR");
+	SetDlgItemText(IDC_ScopName,"TCPIP0::223.3.37.21::inst0::INSTR");
 	//...end...
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }

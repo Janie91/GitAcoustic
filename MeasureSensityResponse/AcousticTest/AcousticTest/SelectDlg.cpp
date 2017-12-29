@@ -70,8 +70,10 @@ void CSelectDlg::OnBnClickedselect()
 	case 5:
 		ChooseItem=5;break;//互易法测量
 	}
-	CMeasure mdlg;
-	mdlg.DoModal();
+	CMeasure *mdlg;
+	mdlg = new CMeasure(); //给指针分配内存 
+	mdlg->Create(IDD_Measure); //创建一个非模态对话框  
+	mdlg->ShowWindow(SW_SHOWNORMAL); //显示非模态对话框 
 
 }
 

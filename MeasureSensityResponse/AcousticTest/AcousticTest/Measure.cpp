@@ -152,6 +152,7 @@ void CMeasure::OnBnClickedView()
 		return;
 	}
 	viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
+	Sleep(100);
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	Sleep(100);
 	ScopeTrigger();
@@ -298,7 +299,7 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	CreateMulFrePulse(startf*1000,v/1000,deltaf*1000);
+	//CreateMulFrePulse(startf*1000,v/1000,deltaf*1000);
 }
 
 void CMeasure::OnBnClickedquitsys()
