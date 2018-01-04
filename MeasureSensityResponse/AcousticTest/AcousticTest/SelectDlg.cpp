@@ -71,12 +71,11 @@ void CSelectDlg::OnBnClickedselect()
 	case 5:
 		ChooseItem=5;break;//互易法测量
 	}
-	mdlg=new CMeasure(this);
-	mdlg->Create(IDD_Measure);
+	mdlg=new CMeasure(this);//给指针分配内存
+	mdlg->Create(IDD_Measure);//创建一个非模态对话框
 	mdlg->CenterWindow();//显示在中间
-	mdlg->ShowWindow(SW_SHOW);
+	mdlg->ShowWindow(SW_SHOW);//显示非模态对话框 
 	//this->ShowWindow(SW_HIDE);//将本对话框隐藏,就不知道怎么再打开了
-
 }
 
 

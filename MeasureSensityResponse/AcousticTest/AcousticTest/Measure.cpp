@@ -157,6 +157,7 @@ void CMeasure::OnBnClickedView()
 		return;
 	}
 	viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
+	Sleep(100);
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	Sleep(100);
 	ScopeTrigger();
@@ -307,9 +308,9 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	//CreateMulFrePulse(1,0.5f,1);
 	SetDlgItemTextA(IDC_Show,"停止测量……");
 
+	//CreateMulFrePulse(startf*1000,v/1000,deltaf*1000);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -1143,8 +1144,6 @@ void CMeasure::OnCancel()
 	// TODO: Add your specialized code here and/or call the base class
 	CWnd::DestroyWindow();
 }
-
-
 void CMeasure::OnBnClickedChangesignal()
 {
 	// TODO: Add your control notification handler code here

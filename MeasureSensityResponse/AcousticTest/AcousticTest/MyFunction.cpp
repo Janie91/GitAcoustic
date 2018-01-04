@@ -61,10 +61,10 @@ float CalResponse(float mp,float ux,float up,float d)
 }
 void CreateMulFrePulse(float f1,float v,float delf)
 {
-	char SCPIcmd[100000];
-	float fs=100000;//采样率
-	float t0=0.005f;//脉冲宽度
-	float deltaT=0.03f;//各频率脉冲间隔
+	char SCPIcmd[1000000];
+	float fs=1000;//采样率
+	float t0=0.5;//脉冲宽度
+	float deltaT=2;//各频率脉冲间隔
 	int points=(int)(deltaT*fs);//每个频率段的点数
 	int point=(int)(t0*fs);//真正的脉冲的点数
 	viPrintf(vig,"*rst\n");
@@ -74,19 +74,21 @@ void CreateMulFrePulse(float f1,float v,float delf)
 	{
 		for(int j=0;j<point;j++)
 		{
-			if(i==0&&j==0) sprintf_s(SCPIcmd,"%s, %4.2f",SCPIcmd,sin(2*PI*(f1*1000+i*delf*1000)*j/fs));//data volitile与第一个数之间有个空格
-			sprintf_s(SCPIcmd,"%s,%4.2f",SCPIcmd,sin(2*PI*(f1*1000+i*delf*1000)*j/fs));//使用ASCII码的方式载入数据
+			if(0==i&&0==j) sprintf_s(SCPIcmd,"%s, %4.2f",SCPIcmd,sin(2*PI*(f1+i*delf)*j/fs));
+			//data volatile，后面有一个空格，之后才是数据
+			else sprintf_s(SCPIcmd,"%s,%4.2f",SCPIcmd,sin(2*PI*(f1+i*delf)*j/fs));
+			//使用ASCII码的方式载入数据
 		}
 		for(int k=0;k<points-point;k++)
 			strcat_s(SCPIcmd,",0");
 	}
 	strcat_s(SCPIcmd,"\n");
 	viPrintf(vig,SCPIcmd);
-	viPrintf(vig,"data:copy MulFrePulse, volatile\n");
-	viPrintf(vig,"function:user MulFrePulse\n");
+	viPrintf(vig,"data:copy M_ARB, volatile\n");
+	viPrintf(vig,"function:user M_ARB\n");
 	viPrintf(vig,"function:shape user\n");
 	viPrintf(vig,"output:load 50\n");
-	viPrintf(vig,"frequency 100;voltage %f\n",v);
+	viPrintf(vig,"frequency 10;voltage %f\n",v);
 	viPrintf(vig,"output:sync on\n");
 	viPrintf(vig,"output on\n");
 	Sleep(1000);
