@@ -22,6 +22,9 @@
     <None Include="res\AcousticTest.ico">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\icon1.ico">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcousticTest.h">
@@ -87,6 +90,9 @@
     <ClInclude Include="mscomm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ChangeSig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AcousticTest.cpp">
@@ -120,6 +126,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mscomm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ChangeSig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

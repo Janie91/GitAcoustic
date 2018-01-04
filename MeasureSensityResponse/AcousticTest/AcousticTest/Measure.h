@@ -37,10 +37,15 @@ public:
 	void MeasureSensity();
 	void MeasureResponse();
 	void huatu_response();
-	void MeasureReciDir();
+	void MeasureDir();
 	void huatu_recidir();
 	
 	afx_msg void Onturntable();
 private:
 	CTurnTable *pturntable;
+	virtual void PostNcDestroy();
+	virtual void OnCancel();
+
+public:
+	afx_msg void OnBnClickedChangesignal();
 };

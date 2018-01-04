@@ -8,7 +8,7 @@
 
 //...My code...
 #include "MyFunction.h"
-#include "Measure.h"
+
 //...end...
 // CSelectDlg dialog
 
@@ -19,6 +19,7 @@ CSelectDlg::CSelectDlg(CWnd* pParent /*=NULL*/)
 {
 
 	m_Item = 0;
+	mdlg=NULL;
 }
 
 CSelectDlg::~CSelectDlg()
@@ -46,8 +47,8 @@ BOOL CSelectDlg::OnInitDialog()
 	CDialog::OnInitDialog();
 	
 	// TODO:  在此添加额外的初始化
-	//AfxGetMainWnd()->SendMessage(WM_CLOSE);//把选择测量项目的前一个进入系统的主对话框关闭
-	//AfxGetMainWnd()->ShowWindow(SW_HIDE);//把选择测量项目的前一个进入系统的主对话框隐藏
+	AfxGetMainWnd()->ShowWindow(SW_HIDE);//把选择测量项目的前一个进入系统的主对话框隐藏
+	ModifyStyleEx(WS_EX_TOOLWINDOW, WS_EX_APPWINDOW);//运行程序的时候可以显示图标
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -70,8 +71,11 @@ void CSelectDlg::OnBnClickedselect()
 	case 5:
 		ChooseItem=5;break;//互易法测量
 	}
-	CMeasure mdlg;
-	mdlg.DoModal();
+	mdlg=new CMeasure(this);
+	mdlg->Create(IDD_Measure);
+	mdlg->CenterWindow();//显示在中间
+	mdlg->ShowWindow(SW_SHOW);
+	//this->ShowWindow(SW_HIDE);//将本对话框隐藏,就不知道怎么再打开了
 
 }
 
@@ -79,8 +83,8 @@ void CSelectDlg::OnBnClickedselect()
 void CSelectDlg::OnBnClickedselectquit()
 {
 	// TODO: Add your control notification handler code here
-	CDialog::OnCancel();
-	AfxGetMainWnd()->SendMessage(WM_CLOSE);
+	CDialog::OnCancel();//模态对话框，直接调用基类的函数	
+	AfxGetMainWnd()->SendMessage(WM_CLOSE);//关闭主对话框
 }
 
 

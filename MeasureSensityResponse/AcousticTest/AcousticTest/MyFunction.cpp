@@ -65,8 +65,8 @@ void CreateMulFrePulse(float f1,float v,float delf)
 	float fs=100000;//采样率
 	float t0=0.005f;//脉冲宽度
 	float deltaT=0.03f;//各频率脉冲间隔
-	int points=deltaT*fs;//每个频率段的点数
-	int point=t0*fs;//真正的脉冲的点数
+	int points=(int)(deltaT*fs);//每个频率段的点数
+	int point=(int)(t0*fs);//真正的脉冲的点数
 	viPrintf(vig,"*rst\n");
 	viPrintf(vig,"*cls\n");
 	strcpy_s(SCPIcmd,"data volatile");

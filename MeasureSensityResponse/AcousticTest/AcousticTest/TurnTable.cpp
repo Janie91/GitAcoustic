@@ -25,8 +25,6 @@ CTurnTable::CTurnTable(CWnd* pParent /*=NULL*/)
 
 CTurnTable::~CTurnTable()
 {
-	if(m_mscom.get_PortOpen())
-		m_mscom.put_PortOpen(false);
 }
 
 void CTurnTable::DoDataExchange(CDataExchange* pDX)
@@ -827,15 +825,7 @@ void CTurnTable::OnBnClickedquit()
 	// TODO: Add your control notification handler code here
 	StartAngle=GetDlgItemInt(IDC_StartAngle);
 	EndAngle=GetDlgItemInt(IDC_EndAngle);
-	/*KillTimer(1);
-	if(m_mscom.get_PortOpen())
-		m_mscom.put_PortOpen(false);*/
-	//CDialog::OnOK();
 }
-
-
-
-
 
 void CTurnTable::OnPaint()//ÔÚturntableµÄÖØ»æº¯ÊıÖĞÌí¼ÓÁËÏÔÊ¾½Ç¶ÈµÄº¯Êı£¬²»ÖªµÀ²âÁ¿µÄÊ±ºòÄÜ²»ÄÜÒ»Ö±¿´µ½±ä»¯
 {
@@ -843,4 +833,23 @@ void CTurnTable::OnPaint()//ÔÚturntableµÄÖØ»æº¯ÊıÖĞÌí¼ÓÁËÏÔÊ¾½Ç¶ÈµÄº¯Êı£¬²»ÖªµÀ²
 	// TODO: Add your message handler code here
 	// Do not call CDialog::OnPaint() for painting messages
 	SetDlgItemText(IDC_CurrentAngle,m_CurrentAngle);
+}
+
+
+void CTurnTable::OnCancel()
+{
+	// TODO: Add your specialized code here and/or call the base class
+	KillTimer(1);
+	if(m_mscom.get_PortOpen())
+		m_mscom.put_PortOpen(false);
+	DestroyWindow();
+}
+
+
+void CTurnTable::PostNcDestroy()
+{
+	// TODO: Add your specialized code here and/or call the base class
+	
+	CDialog::PostNcDestroy();
+	//delete this;
 }

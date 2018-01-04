@@ -56,4 +56,6 @@ public:
 	int m_StartAngle;
 	int m_EndAngle;
 	afx_msg void OnPaint();
+	virtual void OnCancel();
+	virtual void PostNcDestroy();
 };

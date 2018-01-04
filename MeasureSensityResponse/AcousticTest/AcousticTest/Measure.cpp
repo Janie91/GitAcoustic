@@ -5,15 +5,14 @@
 #include "AcousticTest.h"
 #include "Measure.h"
 #include "afxdialogex.h"
-
+#include "SelectDlg.h"
 //...My code...
 #include "SetSigDlg.h"
 #include "SetScopDlg.h"
 #include "SetConditionDlg.h"
-#include "SelectDlg.h"
 #include "MyFunction.h"
-#include <vector>
-using namespace std;
+#include "ChangeSig.h"
+
 //excel需要
 #include "CApplication.h"
 #include "CRange.h"
@@ -21,6 +20,10 @@ using namespace std;
 #include "CWorkbooks.h"
 #include "CWorksheet.h"
 #include "CWorksheets.h"
+
+#include <vector>
+using namespace std;
+
 
 vector<vector<float>>Result(4,vector<float>(0));
 vector<float> MeaAngle;
@@ -42,7 +45,6 @@ CMeasure::CMeasure(CWnd* pParent /*=NULL*/)
 
 CMeasure::~CMeasure()
 {
-	if(pturntable!=NULL) delete pturntable;
 }
 
 void CMeasure::DoDataExchange(CDataExchange* pDX)
@@ -63,6 +65,7 @@ BEGIN_MESSAGE_MAP(CMeasure, CDialogEx)
 	ON_BN_CLICKED(IDC_quitSys, &CMeasure::OnBnClickedquitsys)
 	ON_COMMAND(ID_save, &CMeasure::Onsave)
 	ON_COMMAND(ID_turntable, &CMeasure::Onturntable)
+	ON_BN_CLICKED(IDC_ChangeSignal, &CMeasure::OnBnClickedChangesignal)
 END_MESSAGE_MAP()
 
 
@@ -75,15 +78,14 @@ void Capture(vector<int> cha,int count);
 void MeasureSensity();
 void MeasureResponse();
 void huatu_response();
-void MeasureReciDir();
+void MeasureDir();
 void huatu_recidir();
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
 
 	// TODO:  在此添加额外的初始化
-	GetParent()->ShowWindow(SW_HIDE);//把测量的前一个选择测量项目对话框关闭
-	//GetDlgItem(IDC_StartMea)->EnableWindow(false);
+	ModifyStyleEx(WS_EX_TOOLWINDOW, WS_EX_APPWINDOW);//运行程序的时候可以显示图标
 	CRect rect;  
 	GetDlgItem(IDC_picture)->GetClientRect(&rect);
 	GetDlgItem(IDC_picture)->MoveWindow(50,50,800,600,true); 
@@ -114,20 +116,23 @@ void CMeasure::OnBackselect()
 {
 	// TODO: Add your command handler code here
 	this->SendMessage(WM_CLOSE);
-	GetParent()->ShowWindow(SW_SHOW);//显示选择测量选项的对话框	
 }
 
 void CMeasure::Onturntable()
 {
 	// TODO: 在此添加命令处理程序代码
+	if(pturntable!=NULL) delete pturntable;
 	pturntable = new CTurnTable(); //给指针分配内存 
 	pturntable->Create(IDD_turntable); //创建一个非模态对话框  
-	pturntable->ShowWindow(SW_SHOWNORMAL); //显示非模态对话框  
+	pturntable->ShowWindow(SW_SHOW); //显示非模态对话框 
+	
+
 }
 
 void CMeasure::OnBnClickedView()
 {
 	// TODO: Add your control notification handler code here
+	SetDlgItemTextA(IDC_Show,"正在观察信号，请稍后……");
 	int delay=(int)(Brep*1000);//延迟delay，单位ms
 	renew();
 	//clock_t t_start=clock();
@@ -248,6 +253,7 @@ void CMeasure::OnBnClickedView()
 		}
 	}
 	/*viPrintf(vip,":run\n");*/
+	SetDlgItemTextA(IDC_Show,"观察信号……");
 }
 
 void CMeasure::OnBnClickedStartmea()
@@ -276,6 +282,7 @@ void CMeasure::OnBnClickedStartmea()
 		AfxMessageBox("请选择示波器的测量通道！");
 		return;
 	}
+	SetDlgItemTextA(IDC_Show,"正在测量，请稍后……");
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
@@ -287,18 +294,22 @@ void CMeasure::OnBnClickedStartmea()
 		SetTimer(2,1000,NULL);
 		break;
 	case 2:
-		MeasureReciDir();
+	case 3:
+		MeasureDir();
 		SetTimer(3,1000,NULL);
+		break;
 	}
 	
-	
+	SetDlgItemTextA(IDC_Show,"测量完成……");
 }
 
 void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	CreateMulFrePulse(1,0.5f,1);
+	//CreateMulFrePulse(1,0.5f,1);
+	SetDlgItemTextA(IDC_Show,"停止测量……");
+
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -312,9 +323,7 @@ void CMeasure::OnBnClickedquitsys()
 	viClose(vig);
 	viClose(vidp);
 	viClose(vidg);
-	CDialog::OnCancel();
-	GetParent()->SendMessage(WM_CLOSE);
-	AfxGetMainWnd()->SendMessage(WM_CLOSE);//退出系统要把主对话框关闭
+	OnCancel();//因为它是非模态对话框，自己重载了这个函数	
 }
 void CMeasure::Onsave()
 {
@@ -352,22 +361,35 @@ void CMeasure::Onsave()
 	{
 	case 0:
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("比较法测量灵敏度级"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)1),
 			_variant_t("频率（kHz)"));
-		range.put_Item(_variant_t((long)1),_variant_t((long)2),
+		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("灵敏度级(dB)"));
 		break;
 	case 1:
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("比较法测量发射电压响应级"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)1),
 			_variant_t("频率（kHz)"));
-		range.put_Item(_variant_t((long)1),_variant_t((long)2),
+		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("发射电压响应级(dB)"));
 		break;
 	case 2:
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("单频点接收换能器指向性"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)1),
 			_variant_t("角度(°)"));
-		range.put_Item(_variant_t((long)1),_variant_t((long)2),
+		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("电压(V)"));
 		break;
+	case 3:
+		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("单频点发射换能器指向性"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)1),
+			_variant_t("角度(°)"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)2),
+				_variant_t("电压(V)"));
 
 	}
 	
@@ -457,14 +479,14 @@ void CMeasure::renew()
 	CBrush rebrush;
 	rebrush.CreateSolidBrush (RGB(255,255,255));
 	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
-	CPen newPen;
-	newPen.CreatePen (PS_SOLID,1,RGB(0,0,0));
-	CPen *poldPen=pDC->SelectObject(&newPen);
+	//CPen newPen;
+	//newPen.CreatePen (PS_SOLID,1,RGB(0,0,0));
+	//CPen *poldPen=pDC->SelectObject(&newPen);
 	CRect rect;
 	pWnd->GetClientRect(rect);
 	pDC->Rectangle (rect);
 	pDC->SelectObject (pOldBrush);
-	pDC->SelectObject(poldPen);
+	/*pDC->SelectObject(poldPen);*/
 }
 void CMeasure::huatu_sensity()
 {
@@ -478,14 +500,14 @@ void CMeasure::huatu_sensity()
 	CPen* pOldPen=pDC->SelectObject(pNewPen);
 	int deltaX=rect.Width()/50;
 	int deltaY=rect.Height()/100;//100是随机取的，代表纵轴分为100份
-	pDC->SetViewportOrg(rect.left,rect.bottom);//测量灵敏度时都是负值,原点设为最左下角的点
+	pDC->SetViewportOrg(rect.left,rect.top);//测量灵敏度时都是负值,原点设为最左上角的点
 	//画网格线
 	CString str;
 	int temp=0;
 	for(x=0;x<=50;x+=2)
 	{
 		pDC->MoveTo((int)(x*deltaX),0);
-		pDC->LineTo((int)(x*deltaX),-rect.Height());
+		pDC->LineTo((int)(x*deltaX),rect.Height());
 		if(endf==startf)
 		{
 			str.Format("%d",(int)(startf+x));
@@ -501,10 +523,10 @@ void CMeasure::huatu_sensity()
 	}
 	for(y=0;y<=100;y+=10)
 	{
-		pDC->MoveTo(rect.left,-y*deltaY);
-		pDC->LineTo(rect.right,-y*deltaY);
+		pDC->MoveTo(rect.left,y*deltaY);
+		pDC->LineTo(rect.right,y*deltaY);
 		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
-		pDC->TextOutA(rect.left-30,-y*deltaY,str);
+		pDC->TextOutA(rect.left-30,y*deltaY,str);
 	}
 	pDC->SelectObject(pOldPen);
 	delete pNewPen;
@@ -527,12 +549,12 @@ void CMeasure::huatu_sensity()
 		if(isChaChoose[ch])
 		{
 			if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
-			pDC->MoveTo(0,(int)((Result[ch][0]+150)*deltaY));//将画笔移到起点
+			pDC->MoveTo(0,-(int)((Result[ch][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
 			if(endf==startf) continue;
 			for(unsigned int i=1;i<Result[ch].size();i++)
 			{
 				x=(int)(i*deltaf*deltaX*50/(endf-startf));
-				y=(int)((Result[ch][i]+150)*deltaY);
+				y=-(int)((Result[ch][i]+150)*deltaY);
 				pDC->LineTo(x,y);//连接两个点
 			}
 		}
@@ -858,7 +880,7 @@ void CMeasure::huatu_response()
 
 	pDC->SelectObject(pOldPen);
 }
-void CMeasure::MeasureReciDir()
+void CMeasure::MeasureDir()
 {
 	f=startf;
 	isMeasure=true;
@@ -867,6 +889,7 @@ void CMeasure::MeasureReciDir()
 		AfxMessageBox("请先连接控制回转系统！");
 		return;
 	}
+	pturntable->Invalidate();//激活回转窗口，不知道有没有用？？？？？？？？？
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
@@ -902,9 +925,20 @@ void CMeasure::MeasureReciDir()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	viPrintf(vip,":run\n");
+	viPrintf(vip,":timebase:mode window\n");
+	MeaAngle.push_back(angle);
+	for(int i=0;i<4;i++)
+	{
+		if(!isChaChoose[i]) continue;
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
+		viPrintf(vip,":measure:source channel%d\n",i+1);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+		Result[i].push_back(u[i]);
+	}//读取第一个角度的电压值
 	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
 	else pturntable->RotateLeft();//逆时针转动
-	Sleep(200);
 	angle=pturntable->ReadCurrentAngle();	
 	while((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle))
 	{
@@ -917,8 +951,6 @@ void CMeasure::MeasureReciDir()
 			TranslateMessage (&msg) ;          
 			DispatchMessage (&msg) ;          
 		}
-		viPrintf(vip,":run\n");
-		viPrintf(vip,":timebase:mode window\n");
 		for(int i=0;i<4;i++)
 		{
 			if(isChaChoose[i])
@@ -965,7 +997,6 @@ void CMeasure::MeasureReciDir()
 					
 				}
 				angle=pturntable->ReadCurrentAngle();
-				Sleep(200);
 				MeaAngle.push_back(angle);
 			}
 		}
@@ -992,6 +1023,17 @@ void CMeasure::MeasureReciDir()
 	}
 	if(isRightDir) pturntable->StopRotateRight();
 	else pturntable->StopRotateLeft();
+	MeaAngle.push_back(angle);
+	for(int i=0;i<4;i++)
+	{
+		if(!isChaChoose[i]) continue;
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
+		viPrintf(vip,":measure:source channel%d\n",i+1);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+		Result[i].push_back(u[i]);
+	}//最后一个角度的电压值
+	huatu_recidir();
 	viPrintf(vip,":timebase:mode main\n");
 	pturntable->SetTimer(1,200,NULL);
 }
@@ -1008,7 +1050,7 @@ void CMeasure::huatu_recidir()
 	pDC->SelectStockObject(NULL_BRUSH);//没有画刷就避免圆被覆盖，画的空心圆
 	int w=rect.Width(),h=rect.Height ();
 	pDC->SetViewportOrg(w/2,h/2);//设置原点
-	int R=(h-40)/2;//半径
+	int R=(h-60)/2;//半径
 	int deltaR=R/cycle_num;
 	for(int i=1;i<=cycle_num;i++)
 	{
@@ -1028,7 +1070,15 @@ void CMeasure::huatu_recidir()
 		y=(int)(R*cos(-i*deltaA));
 		pDC->LineTo(x,y);//画了二三象限的半径
 	}
-
+	CString str;
+	str.Format("%d",0);
+	pDC->TextOutA(0,-R-20,str);
+	str.Format("%d",-90);
+	pDC->TextOutA(-R-25,0,str);
+	str.Format("%d",90);
+	pDC->TextOutA(R+10,0,str);
+	str.Format("-180(180)");
+	pDC->TextOutA(-20,R+10,str);
 	////debug
 	//CPen ppen;
 	//ppen.CreatePen(PS_SOLID, 1, RGB(255,0,0));
@@ -1077,4 +1127,29 @@ void CMeasure::huatu_recidir()
 	}
 
 	pDC->SelectObject(pOldPen);
+}
+
+void CMeasure::PostNcDestroy()
+{
+	// TODO: Add your specialized code here and/or call the base class
+	CDialog::PostNcDestroy();
+	delete pturntable;
+	delete this;
+}
+
+
+void CMeasure::OnCancel()
+{
+	// TODO: Add your specialized code here and/or call the base class
+	CWnd::DestroyWindow();
+}
+
+
+void CMeasure::OnBnClickedChangesignal()
+{
+	// TODO: Add your control notification handler code here
+	CChangeSig *signal=new CChangeSig();
+	signal->Create(IDD_ChangeSig); //创建一个非模态对话框  
+	signal->ShowWindow(SW_SHOW); //显示非模态对话框 
+	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 }

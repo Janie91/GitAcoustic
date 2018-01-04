@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Measure.h"
 
 // CSelectDlg dialog
 
@@ -24,4 +24,5 @@ public:
 	int m_Item;
 	afx_msg void OnBnClickedselectquit();
 	virtual BOOL OnInitDialog();
+	CMeasure *mdlg;
 };

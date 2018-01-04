@@ -99,11 +99,13 @@
     <None Include="ReadMe.txt" />
     <None Include="res\AcousticTest.ico" />
     <None Include="res\AcousticTest.rc2" />
+    <None Include="res\icon1.ico" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcousticTest.h" />
     <ClInclude Include="AcousticTestDlg.h" />
     <ClInclude Include="CApplication.h" />
+    <ClInclude Include="ChangeSig.h" />
     <ClInclude Include="CRange.h" />
     <ClInclude Include="CWorkbook.h" />
     <ClInclude Include="CWorkbooks.h" />
@@ -126,6 +128,7 @@
   <ItemGroup>
     <ClCompile Include="AcousticTest.cpp" />
     <ClCompile Include="AcousticTestDlg.cpp" />
+    <ClCompile Include="ChangeSig.cpp" />
     <ClCompile Include="Measure.cpp" />
     <ClCompile Include="mscomm.cpp" />
     <ClCompile Include="MyFunction.cpp" />
