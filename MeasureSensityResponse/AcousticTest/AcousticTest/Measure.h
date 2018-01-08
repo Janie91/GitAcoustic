@@ -31,6 +31,8 @@ public:
 	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedquitsys();
 	afx_msg void Onsave();
+	afx_msg void Onturntable();
+
 	void renew();
 	void huatu_sensity();
 	void Capture(vector<int> cha,int count);
@@ -39,8 +41,9 @@ public:
 	void huatu_response();
 	void MeasureDir();
 	void huatu_recidir();
+	void MeaMulDir();
+	void huatu_muldir();
 	
-	afx_msg void Onturntable();
 private:
 	CTurnTable *pturntable;
 	virtual void PostNcDestroy();

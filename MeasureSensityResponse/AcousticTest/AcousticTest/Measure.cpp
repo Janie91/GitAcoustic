@@ -27,8 +27,9 @@ using namespace std;
 
 vector<vector<float>>Result(4,vector<float>(0));
 vector<float> MeaAngle;
+vector<vector<float>>MAngle(4,vector<float>(0));
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
-bool isTimer[3]={false,false,false};
+bool isTimer[4]={false,false,false,false};
 bool isMeasure=true;
 
 //...end...
@@ -80,6 +81,8 @@ void MeasureResponse();
 void huatu_response();
 void MeasureDir();
 void huatu_recidir();
+void MeaMulDir();
+void huatu_muldir();
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -115,7 +118,8 @@ void CMeasure::OnSetcondition()
 void CMeasure::OnBackselect()
 {
 	// TODO: Add your command handler code here
-	this->SendMessage(WM_CLOSE);
+	//this->SendMessage(WM_CLOSE);
+	OnCancel();
 }
 
 void CMeasure::Onturntable()
@@ -256,7 +260,14 @@ void CMeasure::OnBnClickedView()
 	/*viPrintf(vip,":run\n");*/
 	SetDlgItemTextA(IDC_Show,"观察信号……");
 }
-
+void CMeasure::OnBnClickedChangesignal()
+{
+	// TODO: Add your control notification handler code here
+	CChangeSig *signal=new CChangeSig();
+	signal->Create(IDD_ChangeSig); //创建一个非模态对话框  
+	signal->ShowWindow(SW_SHOW); //显示非模态对话框 
+	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+}
 void CMeasure::OnBnClickedStartmea()
 {
 	// TODO: Add your control notification handler code here
@@ -299,6 +310,9 @@ void CMeasure::OnBnClickedStartmea()
 		MeasureDir();
 		SetTimer(3,1000,NULL);
 		break;
+	case 4:
+		MeaMulDir();
+		SetTimer(4,1000,NULL);
 	}
 	
 	SetDlgItemTextA(IDC_Show,"测量完成……");
@@ -308,7 +322,6 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	SetDlgItemTextA(IDC_Show,"停止测量……");
 
 	//CreateMulFrePulse(startf*1000,v/1000,deltaf*1000);
 }
@@ -316,7 +329,7 @@ void CMeasure::OnBnClickedStopmea()
 void CMeasure::OnBnClickedquitsys()
 {
 	// TODO: Add your control notification handler code here
-	for(int i=0;i<3;i++)
+	for(int i=0;i<4;i++)
 	{
 		if(isTimer[i]) KillTimer(i+1);
 	}
@@ -391,6 +404,13 @@ void CMeasure::Onsave()
 			_variant_t("角度(°)"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("电压(V)"));
+	case 4:
+		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("多频点换能器指向性"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)1),
+			_variant_t("角度(°)"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)2),
+				_variant_t("电压(V)"));
 
 	}
 	
@@ -411,19 +431,50 @@ void CMeasure::Onsave()
 	{
 		if(isChaChoose[i])
 		{
-			if(Result[i].size()==0)continue;
-			col++;
-			for(unsigned int j=0;j<Result[i].size();j++)
+			if(ChooseItem==4)
 			{
-				//设置j+2排的第1列数据
-				if(ChooseItem==2) range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
-					_variant_t(MeaAngle[j]));
-				else range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
-					_variant_t(startf+deltaf*j));
-				//设置j+2排的第2列数据或第3列……
-				range.put_Item(_variant_t((long)(j+2)),_variant_t((long)col),
-					_variant_t(Result[i][j]));
+				for(int j=0;j<4;j++)
+				{
+					if(Result[j].size()==0)continue;
+					for(unsigned int k=0;k<Result[j].size();k++)
+					{
+						range.put_Item(_variant_t((long)(k+2)),_variant_t((long)(2*j+1)),
+						_variant_t(MAngle[j][k]));
+						//设置k+2排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(k+2)),_variant_t((long)(2*j+2)),
+						_variant_t(Result[j][k]));
+					}
+				}
+			}
+			else
+			{
+				if(Result[i].size()==0)continue;
+				col++;
+				for(unsigned int j=0;j<Result[i].size();j++)
+				{
+					//设置j+2排的第1列数据
+					switch(ChooseItem)
+					{
+					case 0:
+					case 1:
+						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
+						_variant_t(startf+deltaf*j));
+						//设置j+2排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)col),
+						_variant_t(Result[i][j]));
+						break;
+					case 2:
+					case 3:
+						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
+						_variant_t(MeaAngle[j]));
+						//设置j+2排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)col),
+						_variant_t(Result[i][j]));
+						break;
+
+					}			
 		
+				}
 			}
 		}
 	}
@@ -457,6 +508,8 @@ void CMeasure::OnTimer(UINT_PTR nIDEvent)
 		huatu_response();isTimer[1]=true;break;
 	case 3:
 		huatu_recidir();isTimer[2]=true;break;
+	case 4:
+		huatu_muldir();isTimer[3]=true;break;
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -1144,11 +1197,255 @@ void CMeasure::OnCancel()
 	// TODO: Add your specialized code here and/or call the base class
 	CWnd::DestroyWindow();
 }
-void CMeasure::OnBnClickedChangesignal()
+void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 {
-	// TODO: Add your control notification handler code here
-	CChangeSig *signal=new CChangeSig();
-	signal->Create(IDD_ChangeSig); //创建一个非模态对话框  
-	signal->ShowWindow(SW_SHOW); //显示非模态对话框 
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	f=startf;
+	isMeasure=true;
+	if(pturntable==NULL) 
+	{
+		AfxMessageBox("请先连接控制回转系统！");
+		return;
+	}
+	pturntable->Invalidate();//激活回转窗口，不知道有没有用？？？？？？？？？
+	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
+	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
+	bool isRightDir=true;
+	CreateMulFrePulse(f*1000,v/1000,deltaf*1000);//多频点信号
+	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
+	{
+		pturntable->RotateTargetAngle(StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
+		isRightDir=true;
+	}
+	else 
+	{
+		pturntable->RotateTargetAngle(EndAngle);
+		isRightDir=false;
+	}
+	angle=pturntable->ReadCurrentAngle();
+	while(abs(angle-StartAngle)>0.1)//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
+	{
+		angle=pturntable->ReadCurrentAngle();
+	}//等待转到指定角度完成
+	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
+	viPrintf(vip,":timebase:mode window\n");
+	for(int i=0;i<4;i++)
+	{
+		if(isChaChoose[i])//只有一个是true
+		{
+			for(int j=0;j<4;j++)//4个频点
+			{
+				CString s;
+				s.Format("完成选择通道%d的第%d个频率的测量区域后点击确定",i+1,j+1);
+				MessageBox(s);
+				viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[j]);
+				viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[j]);
+			}
+		}
+	}
+	viPrintf(vip,":timebase:mode main\n");
+	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	viPrintf(vip,":run\n");
+	viPrintf(vip,":timebase:mode window\n");
+	for(int i=0;i<4;i++)
+	{
+		if(!isChaChoose[i]) continue;
+		else
+		{
+			for(int j=0;j<4;j++)
+			{
+				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[j]);
+				viPrintf(vip,":timebase:window:range %f\n",zoomRange[j]);
+				viPrintf(vip,":measure:source channel%d\n",i+1);
+				viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
+				Result[j].push_back(u[j]);
+				MAngle[j].push_back(angle);
+			}
+		}
+	}//读取第一个角度的电压值
+	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
+	else pturntable->RotateLeft();//逆时针转动
+	angle=pturntable->ReadCurrentAngle();	
+	while((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle))
+	{
+		//用来接收“停止测量”按钮按下的消息
+		MSG  msg;
+		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+		{          
+			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
+					break ;          
+			TranslateMessage (&msg) ;          
+			DispatchMessage (&msg) ;          
+		}
+		for(int i=0;i<4;i++)
+		{
+			if(isChaChoose[i])
+			{
+				for(int j=0;j<4;j++)
+				{
+					float vrange,vtemp;
+					bool isok=true;
+					int flag=0;
+					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
+					viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
+					viPrintf(vip,":measure:source channel%d\n",i+1);
+					viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
+					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					vtemp=u[j];
+					while(vtemp<-1e8||vrange<-1e8)
+					{
+						if(flag>10)
+						{
+							isok=false;
+							break;
+						}
+						flag++;
+						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					}
+					while(vtemp>vrange/8.0*4) 
+					{
+						viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
+						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+						isok=false;
+					}
+					//波形显示小于两格
+					while(vtemp<vrange/8.0*2)
+					{
+						viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+						isok=false;
+					}
+					if(isok==false)
+					{
+						u[j]=0;
+						j=j-1;//此通道重新测量一遍
+					
+					}
+					angle=pturntable->ReadCurrentAngle();
+					MAngle[j].push_back(angle);
+				}
+			}
+		}
+		//保存电压值
+		for(int j=0;j<4;j++)
+		{
+			Result[j].push_back(u[j]);
+		}
+		
+		//绘制极坐标图
+		huatu_muldir();
+		angle=pturntable->ReadCurrentAngle();
+		if(isRightDir&&angle>=EndAngle)
+		{
+			pturntable->StopRotateRight();
+			isMeasure=false;
+			break;
+		}
+		else if(!isRightDir&&angle<=StartAngle)
+		{
+			pturntable->StopRotateLeft();
+			isMeasure=false;
+			break;
+		}		
+	}
+	if(isRightDir) pturntable->StopRotateRight();
+	else pturntable->StopRotateLeft();
+	angle=pturntable->ReadCurrentAngle();
+	for(int i=0;i<4;i++)
+	{
+		if(!isChaChoose[i]) continue;
+		for(int j=0;j<4;j++)
+		{
+			viPrintf(vip,":timebase:window:position %f\n",zoomPosition[j]);
+			viPrintf(vip,":timebase:window:range %f\n",zoomRange[j]);
+			viPrintf(vip,":measure:source channel%d\n",i+1);
+			viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
+			Result[j].push_back(u[j]);
+			MAngle[j].push_back(angle);
+		}
+	}//最后一个角度的电压值
+	huatu_muldir();
+	viPrintf(vip,":timebase:mode main\n");
+	pturntable->SetTimer(1,200,NULL);//重启回转界面的定时器
+}
+void CMeasure::huatu_muldir()
+{
+	int cycle_num=10,redius_num=36;
+	//cycle_num是同心圆的个数，redius_num是直径的条数
+	CWnd *pWnd = GetDlgItem(IDC_picture);
+	CRect rect;
+	pWnd->GetClientRect(rect);
+	CDC *pDC = pWnd->GetDC();
+	CPen newPen;
+	newPen.CreatePen(PS_SOLID, 1, RGB(0,0,0));
+	CPen* pOldPen = (CPen*)pDC->SelectObject(&newPen);
+	pDC->SelectStockObject(NULL_BRUSH);//没有画刷就避免圆被覆盖，画的空心圆
+	int w=rect.Width(),h=rect.Height ();
+	pDC->SetViewportOrg(w/2,h/2);//设置原点
+	int R=(h-60)/2;//半径
+	int deltaR=R/cycle_num;
+	for(int i=1;i<=cycle_num;i++)
+	{
+		pDC->Ellipse(-i*deltaR,-i*deltaR,i*deltaR,i*deltaR);
+		//画圆，其实是找到一个外切正方形的左上角顶点和右下角顶点
+	}
+	pDC->Ellipse(-cycle_num*deltaR,-cycle_num*deltaR,cycle_num*deltaR,cycle_num*deltaR);//最外面的圆
+	float dAngle=2*PI/redius_num;
+	int x,y;
+	for(int i=0;i<=redius_num/2;i++)
+	{
+		pDC->MoveTo(0,0);
+		x=(int)(R*sin(i*dAngle));
+		y=(int)(R*cos(i*dAngle));
+		pDC->LineTo(x,y);//画了一、四象限的半径
+		pDC->MoveTo(0,0);
+		x=(int)(R*sin(-i*dAngle));
+		y=(int)(R*cos(-i*dAngle));
+		pDC->LineTo(x,y);//画了二三象限的半径
+	}
+	CString str;
+	str.Format("%d",0);
+	pDC->TextOutA(0,-R-20,str);
+	str.Format("%d",-90);
+	pDC->TextOutA(-R-25,0,str);
+	str.Format("%d",90);
+	pDC->TextOutA(R+10,0,str);
+	str.Format("-180(180)");
+	pDC->TextOutA(-20,R+10,str);
+	CPen pPen[4];
+	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	
+	for(int ch=0;ch<4;ch++)
+	{
+		if(isChaChoose[ch])//只有一个通道
+		{
+			for(int j=0;j<4;j++)
+			{
+				pOldPen=pDC->SelectObject(&pPen[j]);
+				if(Result[j].size()==0) continue;
+				//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
+			
+				float max=Result[j][0];
+				for(unsigned int k=1;k<Result[j].size();k++)
+					if(max<Result[j][k]) max=Result[j][k];
+				dAngle=PI*MAngle[j][0]/180;
+				pDC->MoveTo((int)(Result[j][0]/max*R*sin(dAngle)),-(int)(Result[j][0]/max*R*cos(dAngle)));
+				//将画笔移到第一个点
+				for(unsigned int k=1;k<Result[j].size();k++)
+				{
+					dAngle=PI*MAngle[j][k]/180;
+					x=(int)(Result[j][k]/max*R*sin(dAngle));
+					y=-(int)(Result[j][k]/max*R*cos(dAngle));
+					pDC->LineTo(x,y);//连接两个点
+				}
+			}
+		}
+	}
+
+	pDC->SelectObject(pOldPen);
 }

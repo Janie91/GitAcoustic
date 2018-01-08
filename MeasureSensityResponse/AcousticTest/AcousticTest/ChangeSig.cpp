@@ -59,7 +59,7 @@ void CChangeSig::OnBnClickedCancel()
 	// TODO: Add your control notification handler code here
 	OnCancel();
 }
-void CChangeSig::OnCancel()
+void CChangeSig::OnCancel()//这个对话框是非模态创建的，所以重载了OnCancel()函数
 {
 	// TODO: Add your specialized code here and/or call the base class
 
@@ -67,7 +67,7 @@ void CChangeSig::OnCancel()
 }
 
 
-void CChangeSig::PostNcDestroy()
+void CChangeSig::PostNcDestroy()//重载了这个函数，在其中删除非模态对话框对象
 {
 	// TODO: Add your specialized code here and/or call the base class
 

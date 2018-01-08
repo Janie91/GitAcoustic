@@ -61,7 +61,7 @@ void CSelectDlg::OnBnClickedselect()
 	case 0:
 		ChooseItem=0;break;//比较法测灵敏度
 	case 1:
-		ChooseItem=1;break;//发射电压响应
+		ChooseItem=1;break;//发送电压响应
 	case 2:
 		ChooseItem=2;break;//单频点接收指向性
 	case 3:

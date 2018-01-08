@@ -1,25 +1,10 @@
-﻿Build started 2018/1/4 22:21:23.
-     1>Project "E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj" on node 2 (rebuild target(s)).
-     1>_PrepareForClean:
-         Deleting file "Debug\AcousticTest.lastbuildstate".
-       InitializeBuildStatus:
+﻿Build started 2018/1/8 17:24:34.
+     1>Project "E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
          Creating "Debug\AcousticTest.unsuccessfulbuild" because "AlwaysCreate" was specified.
        ClCompile:
-         D:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _MBCS /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yc"StdAfx.h" /Fp"Debug\AcousticTest.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt stdafx.cpp
-         stdafx.cpp
-         D:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _MBCS /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Debug\AcousticTest.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt AcousticTest.cpp AcousticTestDlg.cpp ChangeSig.cpp Measure.cpp mscomm.cpp MyFunction.cpp SelectDlg.cpp SetConditionDlg.cpp SetScopDlg.cpp SetSigDlg.cpp TurnTable.cpp
-         TurnTable.cpp
-         SetSigDlg.cpp
-         SetScopDlg.cpp
-         SetConditionDlg.cpp
-         SelectDlg.cpp
-         MyFunction.cpp
-         mscomm.cpp
-         Measure.cpp
-         ChangeSig.cpp
-         AcousticTestDlg.cpp
-         AcousticTest.cpp
-         Generating Code...
+         All outputs are up-to-date.
+         All outputs are up-to-date.
        ResourceCompile:
          C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\rc.exe /D _DEBUG /D _AFXDLL /l"0x0409" /IDebug\ /nologo /fo"Debug\AcousticTest.res" AcousticTest.rc 
        Link:
@@ -41,8 +26,8 @@
        FinalizeBuildStatus:
          Deleting file "Debug\AcousticTest.unsuccessfulbuild".
          Touching "Debug\AcousticTest.lastbuildstate".
-     1>Done Building Project "E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj" (rebuild target(s)).
+     1>Done Building Project "E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj" (build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:05.17
+Time Elapsed 00:00:00.46
