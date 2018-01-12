@@ -18,6 +18,7 @@ CChangeSig::CChangeSig(CWnd* pParent /*=NULL*/)
 	m_v = v;
 	m_w = Bwid;
 	m_p = Brep;
+	isChange=true;
 }
 
 CChangeSig::~CChangeSig()
@@ -51,7 +52,8 @@ void CChangeSig::OnBnClickedOk()
 	v=m_v;
 	Bwid=m_w;
 	Brep=m_p;
-	OnCancel();
+	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	//OnCancel();
 }
 
 void CChangeSig::OnBnClickedCancel()
@@ -73,6 +75,7 @@ void CChangeSig::PostNcDestroy()//重载了这个函数，在其中删除非模态对话框对象
 
 	CDialogEx::PostNcDestroy();
 	delete this;
+	isChange=false;
 }
 
 

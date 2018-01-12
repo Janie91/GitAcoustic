@@ -15,6 +15,7 @@ map<float,float> standMp;
 CString strDirFile="";
 int Ratio=100,Gain=1;
 int StartAngle=-180,EndAngle=180;
+bool isChange=false;
 
 void CreateBurst(float f,float v,float wid,float perio)
 {
@@ -62,16 +63,16 @@ float CalResponse(float mp,float ux,float up,float d)
 void CreateMulFrePulse(float f1,float v,float delf)
 {
 	char SCPIcmd[1000000];
-	float fs=1000000;//采样率
-	float t0=0.005f;//脉冲宽度
-	float T0=0.03f;//各频率脉冲间隔
-	int points=(int)(T0*fs);//每个频率段的点数
-	int point=(int)(t0*fs);//真正的脉冲的点数
-	viPrintf(vig,"*rst\n");
+	float fs=100000;//采样率
+	//float t0=0.005f;//脉冲宽度
+	//float T0=0.03f;//各频率脉冲间隔
+	int points=(int)(0.03*fs);//每个频率段的点数
+	int point=(int)(0.005*fs);//真正的脉冲的点数
+	//viPrintf(vig,"*rst\n");
 	viPrintf(vig,"*cls\n");
 	strcpy_s(SCPIcmd,"data volatile");
 	float f;
-	for(int i=0;i<4;i++)
+	for(int i=0;i<8;i++)
 	{
 		f=f1+i*delf;
 		for(int j=0;j<point;j++)

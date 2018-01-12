@@ -1,14 +1,15 @@
-﻿Build started 2018/1/8 17:24:34.
-     1>Project "E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj" on node 2 (build target(s)).
+﻿生成启动时间为 2018/1/12 16:07:03。
+     1>项目“E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj”在节点 2 上(build 个目标)。
      1>InitializeBuildStatus:
-         Creating "Debug\AcousticTest.unsuccessfulbuild" because "AlwaysCreate" was specified.
+         正在创建“Debug\AcousticTest.unsuccessfulbuild”，因为已指定“AlwaysCreate”。
        ClCompile:
-         All outputs are up-to-date.
-         All outputs are up-to-date.
+         所有输出均为最新。
+         D:\installSoftware\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _MBCS /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Debug\AcousticTest.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt MyFunction.cpp
+         MyFunction.cpp
        ResourceCompile:
-         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\rc.exe /D _DEBUG /D _AFXDLL /l"0x0409" /IDebug\ /nologo /fo"Debug\AcousticTest.res" AcousticTest.rc 
+         所有输出均为最新。
        Link:
-         D:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.exe" /INCREMENTAL /NOLOGO visa32.lib /MANIFEST:NO /DEBUG /PDB:"E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.lib" /MACHINE:X86 Debug\AcousticTest.res
+         D:\installSoftware\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.exe" /INCREMENTAL /NOLOGO visa32.lib /MANIFEST:NO /DEBUG /PDB:"E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.lib" /MACHINE:X86 Debug\AcousticTest.res
          Debug\AcousticTest.obj
          Debug\AcousticTestDlg.obj
          Debug\ChangeSig.obj
@@ -22,12 +23,12 @@
          Debug\stdafx.obj
          Debug\TurnTable.obj
          visa32.lib
-         AcousticTest.vcxproj -> E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.exe
+         AcousticTest.vcxproj -> E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\Debug\AcousticTest.exe
        FinalizeBuildStatus:
-         Deleting file "Debug\AcousticTest.unsuccessfulbuild".
-         Touching "Debug\AcousticTest.lastbuildstate".
-     1>Done Building Project "E:\Chenyuhong\GitTest\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj" (build target(s)).
+         正在删除文件“Debug\AcousticTest.unsuccessfulbuild”。
+         正在对“Debug\AcousticTest.lastbuildstate”执行 Touch 任务。
+     1>已完成生成项目“E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj”(build 个目标)的操作。
 
-Build succeeded.
+生成成功。
 
-Time Elapsed 00:00:00.46
+已用时间 00:00:00.63

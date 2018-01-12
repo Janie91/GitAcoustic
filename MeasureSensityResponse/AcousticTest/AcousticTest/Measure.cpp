@@ -136,7 +136,7 @@ void CMeasure::Onturntable()
 void CMeasure::OnBnClickedView()
 {
 	// TODO: Add your control notification handler code here
-	SetDlgItemTextA(IDC_Show,"正在观察信号，请稍后……");
+	SetDlgItemTextA(IDC_Show,"正在调整信号，请稍后……");
 	int delay=(int)(Brep*1000);//延迟delay，单位ms
 	renew();
 	//clock_t t_start=clock();
@@ -160,8 +160,6 @@ void CMeasure::OnBnClickedView()
 		viPrintf(vip,"*rst\n");
 		return;
 	}
-	viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
-	Sleep(100);
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	Sleep(100);
 	ScopeTrigger();
@@ -171,6 +169,7 @@ void CMeasure::OnBnClickedView()
 	
 	//Capture(chview,chCount);
 	//Sleep(delay+10);//要等待数据采集完成
+	viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
 	int chflag=0,flag=0;
 	for(int i=0;i<4;i++)
 	{
@@ -258,15 +257,17 @@ void CMeasure::OnBnClickedView()
 		}
 	}
 	/*viPrintf(vip,":run\n");*/
-	SetDlgItemTextA(IDC_Show,"观察信号……");
+	SetDlgItemTextA(IDC_Show,"请在示波器上观察信号……");
 }
 void CMeasure::OnBnClickedChangesignal()
 {
 	// TODO: Add your control notification handler code here
-	CChangeSig *signal=new CChangeSig();
-	signal->Create(IDD_ChangeSig); //创建一个非模态对话框  
-	signal->ShowWindow(SW_SHOW); //显示非模态对话框 
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	if(!isChange)
+	{
+		CChangeSig *signal=new CChangeSig();
+		signal->Create(IDD_ChangeSig); //创建一个非模态对话框  
+		signal->ShowWindow(SW_SHOW); //显示非模态对话框 
+	}
 }
 void CMeasure::OnBnClickedStartmea()
 {
@@ -323,7 +324,7 @@ void CMeasure::OnBnClickedStopmea()
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
 
-	//CreateMulFrePulse(startf*1000,v/1000,deltaf*1000);
+	CreateMulFrePulse(f*1000,v/1000,deltaf*1000);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -438,10 +439,10 @@ void CMeasure::Onsave()
 					if(Result[j].size()==0)continue;
 					for(unsigned int k=0;k<Result[j].size();k++)
 					{
-						range.put_Item(_variant_t((long)(k+2)),_variant_t((long)(2*j+1)),
+						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+1)),
 						_variant_t(MAngle[j][k]));
-						//设置k+2排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(k+2)),_variant_t((long)(2*j+2)),
+						//设置k+3排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+2)),
 						_variant_t(Result[j][k]));
 					}
 				}
@@ -452,23 +453,23 @@ void CMeasure::Onsave()
 				col++;
 				for(unsigned int j=0;j<Result[i].size();j++)
 				{
-					//设置j+2排的第1列数据
+					//设置j+3排的第1列数据
 					switch(ChooseItem)
 					{
 					case 0:
 					case 1:
-						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
+						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
 						_variant_t(startf+deltaf*j));
-						//设置j+2排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)col),
+						//设置j+3排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
 						_variant_t(Result[i][j]));
 						break;
 					case 2:
 					case 3:
-						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)1),
+						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
 						_variant_t(MeaAngle[j]));
-						//设置j+2排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(j+2)),_variant_t((long)col),
+						//设置j+3排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
 						_variant_t(Result[i][j]));
 						break;
 

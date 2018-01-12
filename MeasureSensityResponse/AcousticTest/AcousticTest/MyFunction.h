@@ -20,6 +20,7 @@ extern map<float,float> standMp;
 extern CString strDirFile;
 extern int Ratio,Gain;
 extern int StartAngle,EndAngle;
+extern bool isChange;
 
 extern void CreateBurst(float f,float v,float wid,float perio);
 extern float CalSensity(float mp,float ux,float up,float dx,float dp);
