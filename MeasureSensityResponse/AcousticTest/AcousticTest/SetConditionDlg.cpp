@@ -26,9 +26,12 @@ CSetConditionDlg::CSetConditionDlg(CWnd* pParent /*=NULL*/)
 	m_d2 = d[1];
 	m_d3 = d[2];
 	m_d4 = d[3];
-	m_StandFile=strDirFile;
 	m_Ratio=Ratio;
-	m_Gain=Gain;
+	m_gain1 = Gain[0];
+	m_gain2 = Gain[1];
+	m_gain3 = Gain[2];
+	m_gain4 = Gain[3];
+	SetDlgItemText(IDC_standFile,strDirFile);
 }
 
 CSetConditionDlg::~CSetConditionDlg()
@@ -42,9 +45,11 @@ void CSetConditionDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_d2, m_d2);
 	DDX_Text(pDX, IDC_d3, m_d3);
 	DDX_Text(pDX, IDC_d4, m_d4);
-	DDX_Text(pDX, IDC_standFile, m_StandFile);
 	DDX_Text(pDX, IDC_ratio, m_Ratio);
-	DDX_Text(pDX, IDC_Gain, m_Gain);
+	DDX_Text(pDX, IDC_Gain1, m_gain1);
+	DDX_Text(pDX, IDC_Gain2, m_gain2);
+	DDX_Text(pDX, IDC_Gain3, m_gain3);
+	DDX_Text(pDX, IDC_Gain4, m_gain4);
 }
 
 
@@ -68,7 +73,11 @@ void CSetConditionDlg::OnBnClickedConditionok()
 	d[2]=m_d3;
 	d[3]=m_d4;
 	Ratio=m_Ratio;
-	Gain=m_Gain;
+	Gain[0]=m_gain1;
+	Gain[1]=m_gain2;
+	Gain[2]=m_gain3;
+	Gain[3]=m_gain4;
+
 	CDialog::OnOK();
 }
 
@@ -83,14 +92,6 @@ void CSetConditionDlg::OnBnClickedCancel()
 void CSetConditionDlg::OnBnClickedopenfile()
 {
 	// TODO: Add your control notification handler code here
-	UpdateData(true);
-	d[0]=m_d1;
-	d[1]=m_d2;
-	d[2]=m_d3;
-	d[3]=m_d4;
-	Ratio=m_Ratio;
-	Gain=m_Gain;
-
 	CString strfile;	
 	CString filedata;
 	
@@ -138,9 +139,29 @@ void CSetConditionDlg::OnBnClickedopenfile()
 		}
 	}
 	if(file!=NULL) file.Close();
-	m_StandFile=strDirFile;
-	UpdateData(false);
+	SetDlgItemText(IDC_standFile,strDirFile);	
 }
 
 
 
+
+
+BOOL CSetConditionDlg::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	// TODO:  Add extra initialization here
+	if(ChooseItem==5)
+	{
+		SetDlgItemText(IDC_ch1Dis,"FJ¾àÀë");
+		SetDlgItemText(IDC_ch2Dis,"FH¾àÀë");
+		SetDlgItemText(IDC_ch3Dis,"HJ¾àÀë");
+		GetDlgItem(IDC_ch4Dis)->EnableWindow(FALSE);
+		GetDlgItem(IDC_d4)->EnableWindow(FALSE);
+		GetDlgItem(IDC_S4)->EnableWindow(FALSE);
+		GetDlgItem(IDC_SD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_Gain4)->EnableWindow(FALSE);
+	}
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}

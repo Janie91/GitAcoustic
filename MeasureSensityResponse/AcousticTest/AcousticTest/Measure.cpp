@@ -31,7 +31,8 @@ vector<vector<float>>MAngle(4,vector<float>(0));
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
 bool isTimer[4]={false,false,false,false};
 bool isMeasure=true;
-
+ViSession rm,U2751;
+ViStatus st;
 //...end...
 
 // CMeasure dialog
@@ -83,6 +84,8 @@ void MeasureDir();
 void huatu_recidir();
 void MeaMulDir();
 void huatu_muldir();
+void MeaHuyi();
+void huatu_huyi();
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -93,7 +96,11 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 	GetDlgItem(IDC_picture)->GetClientRect(&rect);
 	GetDlgItem(IDC_picture)->MoveWindow(50,50,800,600,true); 
 	//固定Picture Control控件的位置和大小 
-	 
+	 if(ChooseItem==5)
+	 {
+		 viOpenDefaultRM(&rm);
+		 st=viOpen(rm,"USB0::0x0957::0x3D18::MY51380004::0::INSTR",VI_NULL,VI_NULL,&U2751);
+	 }
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -132,23 +139,104 @@ void CMeasure::Onturntable()
 	
 
 }
-
+void autoScale(int chaflag,int cha,int chacount)
+{
+	float vRange=-1,vTemp=-1;
+	int flag=0;
+	
+	viPrintf(vip,":measure:source channel%d\n",cha);
+	viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);//获得纵向的电压范围
+	viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);//测量峰峰值
+			
+	while(vTemp<-1e8||vRange<-1e8||vTemp==-1||vRange==-1)
+	{
+		if(flag>10) break;
+		flag++;
+		viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+	}
+	flag=0;
+	while(vTemp>9e+37)//波形显示超出了屏幕外
+	{
+		if(flag>10||2*vRange>40) 
+		{
+			viPrintf(vip,":channel%d:range 40\n",cha);
+			viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+			viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+			break;
+		}
+		flag++;
+		viPrintf(vip,":channel%d:range %f\n",cha,2*vRange);//重新扩大电压范围
+		viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+	}
+	flag=0;
+			
+	//波形显示大于四格
+	while(vTemp>vRange/8.0*4) 
+	{
+		if(2*vRange>40) 
+		{
+			viPrintf(vip,":channel%d:range 40\n",cha);
+			viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+			viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+			break;
+		}
+		viPrintf(vip,":channel%d:range %f\n",cha,2*vRange);
+		viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+	}
+	//波形显示小于两格
+	while(vTemp<vRange/8.0*2)
+	{
+		if(vRange/2<0.016) 
+		{
+			viPrintf(vip,":channel%d:range 0.016\n",cha);
+			viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+			viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+			break;
+		}
+		viPrintf(vip,":channel%d:range %f\n",cha,vRange/2);
+		viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
+	}
+	//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
+	switch(chacount)
+	{
+	case 1:
+		viPrintf(vip,":channel%d:offset 0\n",cha);//只有一个通道就在中间显示
+		break;
+	case 2:
+		if(chaflag%2==1) viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-vRange/4);
+		else viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-3*vRange/4);
+		break;
+	case 3:
+		if(chaflag%3==1) viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-vRange/6);
+		else if(chaflag%3==2) viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-3*vRange/6);
+		else viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-5*vRange/6);
+		break;
+	case 4:
+		if(chaflag%4==1) viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-vRange/8);
+		else if(chaflag%4==2) viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-3*vRange/8);
+		else if(chaflag%4==3)viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-5*vRange/8);
+		else viPrintf(vip,":channel%d:offset %f\n",cha,vRange/2-7*vRange/8);
+		break;
+	}
+}
 void CMeasure::OnBnClickedView()
 {
 	// TODO: Add your control notification handler code here
-	SetDlgItemTextA(IDC_Show,"正在调整信号，请稍后……");
-	int delay=(int)(Brep*1000);//延迟delay，单位ms
+	SetDlgItemTextA(IDC_Show,"正在调整信号，请稍后......");
+	//int delay=(int)(Brep*1000);//延迟delay，单位ms
 	renew();
-	//clock_t t_start=clock();
+	
 	//自动调整，合适的显示波形
-	int chCount=0;
-	float vRange=-1,vTemp=-1;
-	//vector<int> chview;
+	int chflag=0,chCount=0;	
+	
 	for(int i=0;i<4;i++)
 	{
 		if(isChaChoose[i]) {
 			chCount++;
-			/*chview.push_back(i+1);*/
 			viPrintf(vip,":channel%d:display on\n",i+1);//打开通道
 			viPrintf(vip,":channel%d:offset 0\n",i+1);			
 		}
@@ -160,104 +248,44 @@ void CMeasure::OnBnClickedView()
 		viPrintf(vip,"*rst\n");
 		return;
 	}
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
-	Sleep(100);
-	ScopeTrigger();
-	//clock_t t_end=clock();
-
-	//Sleep((Brep-(t_end-t_start)/CLOCKS_PER_SEC)*1000);
-	
-	//Capture(chview,chCount);
-	//Sleep(delay+10);//要等待数据采集完成
-	viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
-	int chflag=0,flag=0;
-	for(int i=0;i<4;i++)
+	if(ChooseItem==5)
 	{
-		if(isChaChoose[i])
+		if(st!=0)
 		{
-			chflag++;//标记第几个通道，用于调整在示波器屏幕上显示的位置
-			viPrintf(vip,":measure:source channel%d\n",i+1);
-			viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);//获得纵向的电压范围
-			viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);//测量峰峰值
-			
-			while(vTemp<-1e8||vRange<-1e8||vTemp==-1||vRange==-1)
+			AfxMessageBox("开关矩阵连通不正确！");
+			viClose(U2751);
+			viClose(rm);
+			return;
+		}
+		viClear(U2751);
+		viPrintf(U2751,"*rst\n");//开关矩阵复位
+		viPrintf(U2751,"*cls\n");//开关矩阵
+		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+		Sleep(100);
+		viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");
+		//连通301、107和203,发射换能器发，水听器收，互易换能器收
+		ScopeTrigger();
+		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
+		autoScale(1,1,3);//调整第1个显示的是1通道，一共有3个通道，水听器接收的通道
+		autoScale(2,2,3);//互易换能器接收的通道
+		autoScale(3,3,3);//电流计接收的通道
+	}
+	else
+	{
+		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+		Sleep(100);
+		ScopeTrigger();
+		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
+		for(int i=0;i<4;i++)
+		{
+			if(isChaChoose[i])
 			{
-				if(flag>10) break;
-				flag++;
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-			}
-			flag=0;
-			while(vTemp>9e+37)//波形显示超出了屏幕外
-			{
-				if(flag>10||2*vRange>40) 
-				{
-					viPrintf(vip,":channel%d:range 40\n",i+1);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-					break;
-				}
-				flag++;
-				viPrintf(vip,":channel%d:range %f\n",i+1,2*vRange);//重新扩大电压范围
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-			}
-			flag=0;
-			
-			//波形显示大于四格
-			while(vTemp>vRange/8.0*4) 
-			{
-				if(2*vRange>40) 
-				{
-					viPrintf(vip,":channel%d:range 40\n",i+1);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-					break;
-				}
-				viPrintf(vip,":channel%d:range %f\n",i+1,2*vRange);
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-			}
-			//波形显示小于两格
-			while(vTemp<vRange/8.0*2)
-			{
-				if(vRange/2<0.016) 
-				{
-					viPrintf(vip,":channel%d:range 0.016\n",i+1);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-					break;
-				}
-				viPrintf(vip,":channel%d:range %f\n",i+1,vRange/2);
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
-			}
-			//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vRange);
-			switch(chCount)
-			{
-			case 1:
-				viPrintf(vip,":channel%d:offset 0\n",i+1);//只有一个通道就在中间显示
-				break;
-			case 2:
-				if(chflag%2==1) viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-vRange/4);
-				else viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-3*vRange/4);
-				break;
-			case 3:
-				if(chflag%3==1) viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-vRange/6);
-				else if(chflag%3==2) viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-3*vRange/6);
-				else viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-5*vRange/6);
-				break;
-			case 4:
-				if(chflag%4==1) viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-vRange/8);
-				else if(chflag%4==2) viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-3*vRange/8);
-				else if(chflag%4==3)viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-5*vRange/8);
-				else viPrintf(vip,":channel%d:offset %f\n",i+1,vRange/2-7*vRange/8);
-				break;
+				chflag++;
+				autoScale(chflag,i+1,chCount);
 			}
 		}
 	}
-	/*viPrintf(vip,":run\n");*/
-	SetDlgItemTextA(IDC_Show,"请在示波器上观察信号……");
+	SetDlgItemTextA(IDC_Show,"请在示波器上观察信号......");
 }
 void CMeasure::OnBnClickedChangesignal()
 {
@@ -273,8 +301,6 @@ void CMeasure::OnBnClickedStartmea()
 {
 	// TODO: Add your control notification handler code here
 	renew();
-	//vector<int> ch;
-	
 	int delay=(int)(Brep*1000);
 	if(standMp.empty()) 
 	{
@@ -287,15 +313,14 @@ void CMeasure::OnBnClickedStartmea()
 		if(isChaChoose[i])
 		{
 			chcount++;
-			//ch.push_back(i+1);
 		}
 	}
-	if(0==chcount)
+	if(0==chcount||(ChooseItem==5&&chcount<3))
 	{
 		AfxMessageBox("请选择示波器的测量通道！");
 		return;
 	}
-	SetDlgItemTextA(IDC_Show,"正在测量，请稍后……");
+	SetDlgItemTextA(IDC_Show,"正在测量，请稍后......");
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
@@ -314,9 +339,12 @@ void CMeasure::OnBnClickedStartmea()
 	case 4:
 		MeaMulDir();
 		SetTimer(4,1000,NULL);
+	case 5:
+		MeaHuyi();
+		SetTimer(5,1000,NULL);
 	}
 	
-	SetDlgItemTextA(IDC_Show,"测量完成……");
+	SetDlgItemTextA(IDC_Show,"测量完成......");
 }
 
 void CMeasure::OnBnClickedStopmea()
@@ -740,7 +768,7 @@ void CMeasure::MeasureSensity()
 			}
 			else
 				Mp=it->second;
-			Result[i].push_back(CalSensity(Mp,u[i]/Gain,u[chaRefer-1]/Gain,d[i],d[chaRefer-1]));
+			Result[i].push_back(CalSensity(Mp,u[i]/Gain[i],u[chaRefer-1]/Gain[i],d[i],d[chaRefer-1]));
 			//测出的电压值要除以放大倍数
 		}
 		huatu_sensity();
@@ -849,7 +877,7 @@ void CMeasure::MeasureResponse()
 			}
 			else
 				Mp=it->second;
-			Result[i].push_back(CalResponse(Mp,u[i]*Ratio,u[chaRefer-1]/Gain,d[chaRefer-1]));
+			Result[i].push_back(CalResponse(Mp,u[i]*Ratio,u[chaRefer-1]/Gain[i],d[chaRefer-1]));
 			//测出的电压值要除以放大倍数
 		}
 		huatu_response();
@@ -1449,4 +1477,142 @@ void CMeasure::huatu_muldir()
 	}
 
 	pDC->SelectObject(pOldPen);
+}
+float autoV(int chann)
+{
+	float vrange,vtemp;
+	int flag=0;
+	
+	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+	
+	while(vtemp<-1e8||vrange<-1e8)
+	{
+		if(flag>10) break;
+		flag++;
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	}
+	while(vtemp>vrange/8.0*4) 
+	{
+		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	}
+	//波形显示小于两格
+	while(vtemp<vrange/8.0*2)
+	{
+		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	}
+	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	return vtemp;
+}
+void CMeasure::MeaHuyi()
+{
+	float UI[3]={0,0,0};
+	if(st!=0)
+	{
+		AfxMessageBox("开关矩阵连通不正确！");
+		viClose(U2751);
+		viClose(rm);
+		return;
+	}
+	viClear(U2751);
+	viPrintf(U2751,"*RST\n");//开关矩阵复位
+	viPrintf(U2751,"*CLS\n");//开关矩阵
+	viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");//连通301和107,203
+	float Mp=-1;
+	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	MessageBox("请根据提示选择各个通道的测量区域！");
+	//功放连接R3，发射连接C1，互易连接C3（示波器CH2连接R2），
+	//水听器连接C7（示波器CH1连接R1），示波器CH3接的是电流计
+	viPrintf(vip,":timebase:mode window\n");
+	
+	CString s;
+	//发射发，水听器通道
+	s.Format("完成选择通道%d的测量区域后点击确定",1);
+	MessageBox(s);
+	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[0]);
+	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[0]);
+	//发射发，互易换能器通道
+	s.Format("完成选择通道%d的测量区域后点击确定",2);
+	MessageBox(s);
+	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[1]);
+	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[1]);
+	//发射发，电流通道，假设互易发也用这个区间
+	s.Format("完成选择通道%d的测量区域后点击确定",3);
+	MessageBox(s);
+	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[2]);
+	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[2]);
+	//互易发，水听器通道
+	viPrintf(U2751,"ROUTe:OPEN (@301,203)\n");//关掉发射和互易收
+	viPrintf(U2751,"ROUTe:CLOSe (@303)\n");//互易发
+	s.Format("完成选择通道%d的测量区域后点击确定",1);
+	MessageBox(s);
+	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[3]);
+	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[3]);
+
+	viPrintf(vip,":timebase:mode main\n");
+	viPrintf(vip,":run\n");
+	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	f=startf;
+	isMeasure=true;
+	while(isMeasure&&f<=endf)
+	{
+		//用来接收“停止测量”按钮按下的消息
+		MSG  msg;
+		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+		{          
+			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
+					break ;          
+			TranslateMessage (&msg) ;          
+			DispatchMessage (&msg) ;          
+		} 
+
+		viPrintf(vip,":run\n");
+		viPrintf(U2751,"*RST\n");//开关矩阵复位
+		viPrintf(U2751,"*CLS\n");//开关矩阵
+		viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");//连通301和107,203
+		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+		viPrintf(vip,":timebase:mode window\n");
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
+		viPrintf(vip,":measure:source channel%d\n",1);
+		u[0]=autoV(1);//uFJ
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
+		viPrintf(vip,":measure:source channel%d\n",3);
+		UI[0]=autoV(3);//iFJ
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[1]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[1]);
+		viPrintf(vip,":measure:source channel%d\n",2);
+		u[1]=autoV(2);//uFH
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
+		viPrintf(vip,":measure:source channel%d\n",3);
+		UI[1]=autoV(3);//iFH
+		viPrintf(U2751,"ROUTe:OPEN (@301,203)\n");
+		viPrintf(U2751,"ROUTe:CLOSe (@303)\n");
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[3]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[3]);
+		viPrintf(vip,":measure:source channel%d\n",1);
+		u[2]=autoV(1);//uHJ
+		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
+		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
+		viPrintf(vip,":measure:source channel%d\n",3);
+		UI[2]=autoV(3);//iHJ
+		float M_j=(float)sqrt(u[0]*u[2]*UI[1]*d[0]*d[2]/(UI[0]*UI[2]*u[1]*d[1]*f*1000*5)*exp(d[0]+d[2]-d[1]));
+		Result[0].push_back(M_j);
+		huatu_huyi();
+		f+=deltaf;
+	}
+
+	viPrintf(vip,":timebase:mode main\n");
+
+
+}
+void CMeasure::huatu_huyi()
+{
 }

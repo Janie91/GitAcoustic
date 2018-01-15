@@ -26,7 +26,11 @@ public:
 	float m_d4;
 	afx_msg void OnBnClickedCancel();
 	afx_msg void OnBnClickedopenfile();
-	CString m_StandFile;
+//	CString m_StandFile;
 	int m_Ratio;
-	int m_Gain;
+	int m_gain1;
+	int m_gain2;
+	int m_gain3;
+	int m_gain4;
+	virtual BOOL OnInitDialog();
 };

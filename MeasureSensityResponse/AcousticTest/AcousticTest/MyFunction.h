@@ -18,7 +18,7 @@ extern float d[4];
 extern float u[4];
 extern map<float,float> standMp;
 extern CString strDirFile;
-extern int Ratio,Gain;
+extern int Ratio,Gain[4];
 extern int StartAngle,EndAngle;
 extern bool isChange;
 

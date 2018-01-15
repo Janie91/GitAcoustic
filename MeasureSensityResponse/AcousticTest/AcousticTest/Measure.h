@@ -43,6 +43,8 @@ public:
 	void huatu_recidir();
 	void MeaMulDir();
 	void huatu_muldir();
+	void MeaHuyi();
+	void huatu_huyi();
 	
 private:
 	CTurnTable *pturntable;

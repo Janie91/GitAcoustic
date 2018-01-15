@@ -69,7 +69,7 @@ void CSelectDlg::OnBnClickedselect()
 	case 4:
 		ChooseItem=4;break;//多频点接收指向性
 	case 5:
-		ChooseItem=5;break;//互易法测量
+		ChooseItem=5;break;//互易法自动测量
 	}
 	mdlg=new CMeasure(this);//给指针分配内存
 	mdlg->Create(IDD_Measure);//创建一个非模态对话框
