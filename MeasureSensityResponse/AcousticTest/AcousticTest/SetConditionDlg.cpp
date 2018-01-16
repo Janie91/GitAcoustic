@@ -31,7 +31,6 @@ CSetConditionDlg::CSetConditionDlg(CWnd* pParent /*=NULL*/)
 	m_gain2 = Gain[1];
 	m_gain3 = Gain[2];
 	m_gain4 = Gain[3];
-	SetDlgItemText(IDC_standFile,strDirFile);
 }
 
 CSetConditionDlg::~CSetConditionDlg()
@@ -151,6 +150,8 @@ BOOL CSetConditionDlg::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	// TODO:  Add extra initialization here
+	SetDlgItemText(IDC_standFile,strDirFile);
+
 	if(ChooseItem==5)
 	{
 		SetDlgItemText(IDC_ch1Dis,"FJæ‡¿Î");

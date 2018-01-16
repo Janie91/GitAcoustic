@@ -104,8 +104,8 @@ BOOL CAcousticTestDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	//...My code...
-	SetDlgItemText(IDC_SigName,"TCPIP0::10.193.49.106::inst0::INSTR");
-	SetDlgItemText(IDC_ScopName,"TCPIP0::10.193.49.107::inst0::INSTR");
+	SetDlgItemText(IDC_SigName,"TCPIP0::10.193.49.141::inst0::INSTR");
+	SetDlgItemText(IDC_ScopName,"TCPIP0::10.193.49.142::inst0::INSTR");
 	//...end...
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -165,45 +165,45 @@ void CAcousticTestDlg::OnBnClickedOk()
 {
 	// TODO: Add your control notification handler code here
 	
-	//char SigName[50],ScopName[50];
-	//GetDlgItemText(IDC_SigName,SigName,50);
-	//GetDlgItemText(IDC_ScopName,ScopName,50);
-	//viOpenDefaultRM(&vidg);
-	//status=viOpen(vidg,SigName,VI_NULL,VI_NULL,&vig);
-	//if(status!=0)
-	//{
-	//	AfxMessageBox("函数发生器连接不成功，请IP地址或本地连接再重新连接！");
-	//	viClose(vig);
-	//	viClose(vidg);
-	//	return;
-	//}
-	//else
-	//{
-	//	viClear(vig);
-	//	viPrintf(vig,"*rst\n");
-	//	viOpenDefaultRM(&vidp);
-	//	status=viOpen(vidp,ScopName,VI_NULL,VI_NULL,&vip);
-	//	if(status!=0)
-	//	{
-	//		AfxMessageBox("示波器连接不成功，请IP地址或本地连接再重新连接！");
-	//		viClose(vip);
-	//		viClose(vidp);
-	//		viClose(vig);
-	//		viClose(vidg);
-	//		return;
-	//	}
-	//	else
-	//	{//信号源和示波器都成功连接
-	//		viClear(vip);			
-	//		viPrintf(vip,"*rst\n");
-	//		CSelectDlg selectdlg;//进入选择测量项目的对话框
-	//		selectdlg.DoModal();
-	//	}
-	//}
-	//debug
-	CSelectDlg selectdlg(this);//进入选择测量项目的对话框
-	selectdlg.DoModal();
-	//debug
+	char SigName[50],ScopName[50];
+	GetDlgItemText(IDC_SigName,SigName,50);
+	GetDlgItemText(IDC_ScopName,ScopName,50);
+	viOpenDefaultRM(&vidg);
+	status=viOpen(vidg,SigName,VI_NULL,VI_NULL,&vig);
+	if(status!=0)
+	{
+		AfxMessageBox("函数发生器连接不成功，请IP地址或本地连接再重新连接！");
+		viClose(vig);
+		viClose(vidg);
+		return;
+	}
+	else
+	{
+		viClear(vig);
+		viPrintf(vig,"*rst\n");
+		viOpenDefaultRM(&vidp);
+		status=viOpen(vidp,ScopName,VI_NULL,VI_NULL,&vip);
+		if(status!=0)
+		{
+			AfxMessageBox("示波器连接不成功，请IP地址或本地连接再重新连接！");
+			viClose(vip);
+			viClose(vidp);
+			viClose(vig);
+			viClose(vidg);
+			return;
+		}
+		else
+		{//信号源和示波器都成功连接
+			viClear(vip);			
+			viPrintf(vip,"*rst\n");
+			CSelectDlg selectdlg;//进入选择测量项目的对话框
+			selectdlg.DoModal();
+		}
+	}
+	////debug
+	//CSelectDlg selectdlg(this);//进入选择测量项目的对话框
+	//selectdlg.DoModal();
+	////debug
 }
 
 

@@ -352,7 +352,7 @@ void CMeasure::OnBnClickedStopmea()
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
 
-	CreateMulFrePulse(f*1000,v/1000,deltaf*1000);
+	//CreateMulFrePulse(f*1000,v/1000,deltaf*1000);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -673,9 +673,6 @@ void CMeasure::MeasureSensity()
 	float Mp=-1;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
-
-	/*Capture(ch,chcount);
-	Sleep(delay+10);*/
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
 	{
@@ -707,8 +704,6 @@ void CMeasure::MeasureSensity()
 
 		viPrintf(vip,":run\n");
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
-		//Capture(ch,chcount);
-		//Sleep(delay+10);
 		viPrintf(vip,":timebase:mode window\n");
 		for(int i=0;i<4;i++)
 		{
@@ -742,7 +737,7 @@ void CMeasure::MeasureSensity()
 					isok=false;
 				}
 				//波形显示小于两格
-				while(vtemp<vrange/8.0*2)
+				while(vtemp<vrange/8.0)
 				{
 					viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
 					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
@@ -752,8 +747,7 @@ void CMeasure::MeasureSensity()
 				if(isok==false)
 				{
 					u[i]=0;
-					i=i-1;//此通道重新测量一遍
-					
+					i=i-1;//此通道重新测量一遍					
 				}
 			}
 		}
@@ -773,7 +767,6 @@ void CMeasure::MeasureSensity()
 		}
 		huatu_sensity();
 		f+=deltaf;
-		//viPrintf(vip,":run\n");
 	}
 
 	viPrintf(vip,":timebase:mode main\n");
@@ -1615,4 +1608,65 @@ void CMeasure::MeaHuyi()
 }
 void CMeasure::huatu_huyi()
 {
+	int x=0,y=0;
+	CWnd *pWnd=GetDlgItem(IDC_picture);
+	CRect rect;
+	pWnd->GetClientRect(rect);
+	CDC* pDC=pWnd->GetDC();
+	CPen pNewPen;
+	pNewPen.CreatePen(PS_SOLID,1,RGB(0,0,0));
+	CPen* pOldPen=pDC->SelectObject(&pNewPen);
+	int deltaX=rect.Width()/50;
+	int deltaY=rect.Height()/100;//100是随机取的，代表纵轴分为100份
+	pDC->SetViewportOrg(rect.left,rect.top);//测量灵敏度时都是负值,原点设为最左上角的点
+	//画网格线
+	CString str;
+	int temp=0;
+	for(x=0;x<=50;x+=2)
+	{
+		pDC->MoveTo((int)(x*deltaX),0);
+		pDC->LineTo((int)(x*deltaX),rect.Height());
+		if(endf==startf)
+		{
+			str.Format("%d",(int)(startf+x));
+			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
+		}
+		else
+		{
+			if((int)(startf+(endf-startf)/50*x)==temp) continue;
+			temp=(int)(startf+(endf-startf)/50*x);
+			str.Format("%d",temp);
+			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
+		}
+	}
+	for(y=0;y<=100;y+=10)
+	{
+		pDC->MoveTo(rect.left,y*deltaY);
+		pDC->LineTo(rect.right,y*deltaY);
+		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
+		pDC->TextOutA(rect.left-30,y*deltaY,str);
+	}
+	pDC->SelectObject(pOldPen);
+	CPen pPen;
+	pPen.CreatePen(PS_SOLID,2,RGB(255,0,0));
+	pOldPen=pDC->SelectObject(&pPen);
+	if(Result[0].size()!=0)
+	{
+		if(endf!=startf)
+		{
+			pDC->MoveTo(0,-(int)((Result[0][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
+			for(unsigned int i=1;i<Result[0].size();i++)
+			{
+				x=(int)(i*deltaf*deltaX*50/(endf-startf));
+				y=-(int)((Result[0][i]+150)*deltaY);
+				pDC->LineTo(x,y);//连接两个点
+			}
+		}
+		else
+		{
+			pDC->SetPixel(0,-(int)((Result[0][0]+150)*deltaY),RGB(255,0,0));
+		}
+
+	}
+	pDC->SelectObject(pOldPen);
 }
