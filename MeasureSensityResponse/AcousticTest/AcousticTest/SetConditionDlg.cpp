@@ -49,6 +49,7 @@ void CSetConditionDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_Gain2, m_gain2);
 	DDX_Text(pDX, IDC_Gain3, m_gain3);
 	DDX_Text(pDX, IDC_Gain4, m_gain4);
+	DDX_Control(pDX, IDC_MeaCount, m_MeaCount);
 }
 
 
@@ -76,7 +77,9 @@ void CSetConditionDlg::OnBnClickedConditionok()
 	Gain[1]=m_gain2;
 	Gain[2]=m_gain3;
 	Gain[3]=m_gain4;
-
+	CString temp;
+	m_MeaCount.GetLBText(m_MeaCount.GetCurSel(),temp);	
+	MeaCount=atoi(temp);
 	CDialog::OnOK();
 }
 
@@ -97,7 +100,8 @@ void CSetConditionDlg::OnBnClickedopenfile()
 	float freq;
 	float val;
 	strfile="Txt Files(*.txt)|*.txt||";
-	CFileDialog dlg(true,NULL,NULL,OFN_EXPLORER|OFN_HIDEREADONLY|OFN_ENABLESIZING|OFN_FILEMUSTEXIST,strfile);
+	//CFileDialog dlg(true,NULL,NULL,OFN_EXPLORER|OFN_HIDEREADONLY|OFN_ENABLESIZING|OFN_FILEMUSTEXIST,strfile);
+	CFileDialog  dlg(TRUE,NULL,NULL,OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,strfile);
 	dlg.m_ofn.lStructSize=sizeof(OPENFILENAME);
 	if(dlg.DoModal()==IDOK)
 	{
@@ -151,7 +155,7 @@ BOOL CSetConditionDlg::OnInitDialog()
 
 	// TODO:  Add extra initialization here
 	SetDlgItemText(IDC_standFile,strDirFile);
-
+	m_MeaCount.SetCurSel(MeaCount-1);
 	if(ChooseItem==5)
 	{
 		SetDlgItemText(IDC_ch1Dis,"FJæ‡¿Î");

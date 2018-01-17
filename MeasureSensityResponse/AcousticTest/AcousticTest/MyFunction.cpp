@@ -13,7 +13,7 @@ float d[4]={1.0,1.0,1.0,1.0};
 float u[4]={-1.0,-1.0,-1.0,-1.0};
 map<float,float> standMp;
 CString strDirFile="";
-int Ratio=100,Gain[4]={1,1,1,1};
+int Ratio=100,Gain[4]={1,1,1,1},MeaCount=1;
 int StartAngle=-180,EndAngle=180;
 bool isChange=false;
 

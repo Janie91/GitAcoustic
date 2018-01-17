@@ -33,4 +33,5 @@ public:
 	int m_gain3;
 	int m_gain4;
 	virtual BOOL OnInitDialog();
+	CComboBox m_MeaCount;
 };

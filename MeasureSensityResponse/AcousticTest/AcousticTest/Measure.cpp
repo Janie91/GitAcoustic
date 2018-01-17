@@ -86,6 +86,7 @@ void MeaMulDir();
 void huatu_muldir();
 void MeaHuyi();
 void huatu_huyi();
+float autoV(int chann);
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -265,7 +266,7 @@ void CMeasure::OnBnClickedView()
 		viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");
 		//连通301、107和203,发射换能器发，水听器收，互易换能器收
 		ScopeTrigger();
-		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
+		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
 		autoScale(1,1,3);//调整第1个显示的是1通道，一共有3个通道，水听器接收的通道
 		autoScale(2,2,3);//互易换能器接收的通道
 		autoScale(3,3,3);//电流计接收的通道
@@ -275,7 +276,7 @@ void CMeasure::OnBnClickedView()
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		Sleep(100);
 		ScopeTrigger();
-		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*2);//设置时间轴代表的时间长度
+		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
 		for(int i=0;i<4;i++)
 		{
 			if(isChaChoose[i])
@@ -331,15 +332,15 @@ void CMeasure::OnBnClickedStartmea()
 		MeasureResponse();
 		SetTimer(2,1000,NULL);
 		break;
-	case 2:
-	case 3:
+	case 2://测量接收指向性
+	case 3://测量发射指向性
 		MeasureDir();
 		SetTimer(3,1000,NULL);
 		break;
-	case 4:
+	case 4://多频点测量指向性
 		MeaMulDir();
 		SetTimer(4,1000,NULL);
-	case 5:
+	case 5://互易法自动测量灵敏度
 		MeaHuyi();
 		SetTimer(5,1000,NULL);
 	}
@@ -433,6 +434,7 @@ void CMeasure::Onsave()
 			_variant_t("角度(°)"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("电压(V)"));
+		break;
 	case 4:
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
 			_variant_t("多频点换能器指向性"));
@@ -440,6 +442,7 @@ void CMeasure::Onsave()
 			_variant_t("角度(°)"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("电压(V)"));
+		break;
 
 	}
 	
@@ -594,14 +597,14 @@ void CMeasure::huatu_sensity()
 		if(endf==startf)
 		{
 			str.Format("%d",(int)(startf+x));
-			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
+			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
 		}
 		else
 		{
 			if((int)(startf+(endf-startf)/50*x)==temp) continue;
 			temp=(int)(startf+(endf-startf)/50*x);
 			str.Format("%d",temp);
-			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
+			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
 		}
 	}
 	for(y=0;y<=100;y+=10)
@@ -687,7 +690,9 @@ void CMeasure::MeasureSensity()
 	}
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
-	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	CString stemp;
+	stemp.Format("参数设置完成?是否开始测量？\n测量的频率范围 %.1fkHz~%.1fkHz",startf,endf);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
 	f=startf;
 	isMeasure=true;
 	while(isMeasure&&f<=endf)
@@ -793,7 +798,9 @@ void CMeasure::MeasureResponse()
 	}
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
-	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	CString stemp;
+	stemp.Format("参数设置完成?是否开始测量？\n测量的频率范围 %.1fkHz~%.1fkHz",startf,endf);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
 	f=startf;
 	isMeasure=true;
 	while(isMeasure&&f<=endf)
@@ -965,6 +972,21 @@ void CMeasure::MeasureDir()
 		AfxMessageBox("请先连接控制回转系统！");
 		return;
 	}
+	MessageBox("请根据提示选择各个通道的测量区域！");
+	viPrintf(vip,":timebase:mode window\n");
+	for(int i=0;i<4;i++)
+	{
+		if(isChaChoose[i])
+		{
+			CString s;
+			s.Format("完成选择通道%d的测量区域后点击确定",i+1);
+			MessageBox(s);
+			viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[i]);
+			viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[i]);
+		}
+	}
+	viPrintf(vip,":timebase:mode main\n");
+	viPrintf(vip,":run\n");
 	pturntable->Invalidate();//激活回转窗口，不知道有没有用？？？？？？？？？
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
@@ -981,38 +1003,28 @@ void CMeasure::MeasureDir()
 		isRightDir=false;
 	}
 	angle=pturntable->ReadCurrentAngle();
-	while(abs(angle-StartAngle)>0.1)//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
+	while((isRightDir&&abs(angle-StartAngle)>0.1)||(!isRightDir&&abs(angle-EndAngle)>0.1))//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
 	{
 		angle=pturntable->ReadCurrentAngle();
 	}//等待转到指定角度完成
-	MessageBox("请根据提示选择各个通道的测量区域！");
-	viPrintf(vip,":timebase:mode window\n");
-	for(int i=0;i<4;i++)
-	{
-		if(isChaChoose[i])
-		{
-			CString s;
-			s.Format("完成选择通道%d的测量区域后点击确定",i+1);
-			MessageBox(s);
-			viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[i]);
-			viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[i]);
-		}
-	}
-	viPrintf(vip,":timebase:mode main\n");
-	viPrintf(vip,":run\n");
-	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	CString stemp;
+	stemp.Format("参数设置完成?是否开始测量？\n当前频率为%f\n测量的角度范围%d°~%d°\n回转速度为%d",f,StartAngle,EndAngle,pturntable->m_Speed);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
 	viPrintf(vip,":run\n");
 	viPrintf(vip,":timebase:mode window\n");
-	MeaAngle.push_back(angle);
+	
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 		viPrintf(vip,":measure:source channel%d\n",i+1);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+		u[i]=autoV(i+1);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
 		Result[i].push_back(u[i]);
 	}//读取第一个角度的电压值
+	angle=pturntable->ReadCurrentAngle();
+	MeaAngle.push_back(angle);
 	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
 	else pturntable->RotateLeft();//逆时针转动
 	angle=pturntable->ReadCurrentAngle();	
@@ -1072,10 +1084,10 @@ void CMeasure::MeasureDir()
 					i=i-1;//此通道重新测量一遍
 					
 				}
-				angle=pturntable->ReadCurrentAngle();
-				MeaAngle.push_back(angle);
 			}
 		}
+		angle=pturntable->ReadCurrentAngle();
+		MeaAngle.push_back(angle);
 		//保存角度和电压值
 		for(int i=0;i<4;i++)
 		{
@@ -1099,16 +1111,19 @@ void CMeasure::MeasureDir()
 	}
 	if(isRightDir) pturntable->StopRotateRight();
 	else pturntable->StopRotateLeft();
-	MeaAngle.push_back(angle);
+	
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 		viPrintf(vip,":measure:source channel%d\n",i+1);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+		u[i]=autoV(i+1);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
 		Result[i].push_back(u[i]);
 	}//最后一个角度的电压值
+	angle=pturntable->ReadCurrentAngle();
+	MeaAngle.push_back(angle);
 	huatu_recidir();
 	viPrintf(vip,":timebase:mode main\n");
 	pturntable->SetTimer(1,200,NULL);
@@ -1120,6 +1135,11 @@ void CMeasure::huatu_recidir()
 	CRect rect;
 	pWnd->GetClientRect(rect);
 	CDC *pDC = pWnd->GetDC();
+	CBrush rebrush;
+	rebrush.CreateSolidBrush (RGB(255,255,255));//白色刷子
+	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
+	pDC->Rectangle (rect);//清空picture中的绘画
+	pDC->SelectObject (pOldBrush);
 	CPen newPen;
 	newPen.CreatePen(PS_SOLID, 1, RGB(0,0,0));
 	CPen* pOldPen = (CPen*)pDC->SelectObject(&newPen);
@@ -1159,21 +1179,22 @@ void CMeasure::huatu_recidir()
 	//CPen ppen;
 	//ppen.CreatePen(PS_SOLID, 1, RGB(255,0,0));
 	//pOldPen=pDC->SelectObject(&ppen);
-	//float Result[9]={3.2f,18.8f,10.5f,20.6f,30.0f,23.9f,9.6f,16.8f,7.5f};
-	//float MeaAngle[9]={-28.7f,-22.6f,-18.9f,-9.2f,-0.1f,2.3f,8.4f,18.2f,29.9f};
+	//const int N=9;
+	//float Result[N]={100,90,80,70,60,50,40,30,20};
+	//float MeaAngle[N]={-180,-145,-90,-60,0,30,90,120,180};
 	//pDC->MoveTo(0,0);
 	//float max=Result[0];
-	//for(unsigned int i=1;i<9;i++)
+	//for(unsigned int i=1;i<N;i++)
 	//			if(max<Result[i]) max=Result[i];
-	//for(unsigned int i=0;i<9;i++)
+	//for(unsigned int i=0;i<N;i++)
 	//{
 	//	deltaA=PI*MeaAngle[i]/180;
-	//	x=-(int)(Result[i]/max*R*sin(deltaA));
+	//	x=(int)(Result[i]/max*R*sin(deltaA));
 	//	y=-(int)(Result[i]/max*R*cos(deltaA));
 	//	pDC->LineTo(x,y);//连接两个点
 	//}
 
-	////debug
+	//////debug
 	CPen pPen[4];
 	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
 	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
