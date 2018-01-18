@@ -273,7 +273,9 @@ void CMeasure::OnBnClickedView()
 	}
 	else
 	{
-		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+		if(ChooseItem==4)
+			CreateMulFrePulse(f*1000,v/1000,deltaf*1000);
+		else CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		Sleep(100);
 		ScopeTrigger();
 		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
@@ -340,9 +342,11 @@ void CMeasure::OnBnClickedStartmea()
 	case 4://多频点测量指向性
 		MeaMulDir();
 		SetTimer(4,1000,NULL);
+		break;
 	case 5://互易法自动测量灵敏度
 		MeaHuyi();
 		SetTimer(5,1000,NULL);
+		break;
 	}
 	
 	SetDlgItemTextA(IDC_Show,"测量完成......");
@@ -972,6 +976,7 @@ void CMeasure::MeasureDir()
 		AfxMessageBox("请先连接控制回转系统！");
 		return;
 	}
+	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -991,7 +996,6 @@ void CMeasure::MeasureDir()
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
 	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
 	{
 		pturntable->RotateTargetAngle(StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
@@ -1008,7 +1012,7 @@ void CMeasure::MeasureDir()
 		angle=pturntable->ReadCurrentAngle();
 	}//等待转到指定角度完成
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n当前频率为%f\n测量的角度范围%d°~%d°\n回转速度为%d",f,StartAngle,EndAngle,pturntable->m_Speed);
+	stemp.Format("参数设置完成?是否开始测量？\n当前频率为 %.1f\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,StartAngle,EndAngle,pturntable->m_Speed);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
 	viPrintf(vip,":run\n");
 	viPrintf(vip,":timebase:mode window\n");
@@ -1249,11 +1253,29 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		AfxMessageBox("请先连接控制回转系统！");
 		return;
 	}
+	CreateMulFrePulse(f*1000,v/1000,deltaf*1000);//多频点信号
+	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
+	viPrintf(vip,":timebase:mode window\n");
+	for(int i=0;i<4;i++)
+	{
+		if(isChaChoose[i])//只有一个是true
+		{
+			for(int j=0;j<PulseCount;j++)//PulseCount个频点
+			{
+				CString s;
+				s.Format("完成选择通道%d的第%d个频率的测量区域后点击确定",i+1,j+1);
+				MessageBox(s);
+				viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[j]);
+				viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[j]);
+			}
+		}
+	}
+	viPrintf(vip,":timebase:mode main\n");
 	pturntable->Invalidate();//激活回转窗口，不知道有没有用？？？？？？？？？
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
-	CreateMulFrePulse(f*1000,v/1000,deltaf*1000);//多频点信号
+	
 	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
 	{
 		pturntable->RotateTargetAngle(StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
@@ -1269,24 +1291,10 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	{
 		angle=pturntable->ReadCurrentAngle();
 	}//等待转到指定角度完成
-	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
-	viPrintf(vip,":timebase:mode window\n");
-	for(int i=0;i<4;i++)
-	{
-		if(isChaChoose[i])//只有一个是true
-		{
-			for(int j=0;j<4;j++)//4个频点
-			{
-				CString s;
-				s.Format("完成选择通道%d的第%d个频率的测量区域后点击确定",i+1,j+1);
-				MessageBox(s);
-				viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[j]);
-				viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[j]);
-			}
-		}
-	}
-	viPrintf(vip,":timebase:mode main\n");
-	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return;
+	
+	CString stemp;
+	stemp.Format("参数设置完成?是否开始测量？\n起始频率为 %.1f\n频率点数 %d\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,PulseCount,StartAngle,EndAngle,pturntable->m_Speed);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
 	viPrintf(vip,":run\n");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -1294,13 +1302,15 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		if(!isChaChoose[i]) continue;
 		else
 		{
-			for(int j=0;j<4;j++)
+			for(int j=0;j<PulseCount;j++)
 			{
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[j]);
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[j]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
+				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
+				u[j]=autoV(i+1);
 				Result[j].push_back(u[j]);
+				angle=pturntable->ReadCurrentAngle();
 				MAngle[j].push_back(angle);
 			}
 		}
@@ -1323,7 +1333,7 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		{
 			if(isChaChoose[i])
 			{
-				for(int j=0;j<4;j++)
+				for(int j=0;j<PulseCount;j++)
 				{
 					float vrange,vtemp;
 					bool isok=true;
@@ -1353,7 +1363,7 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 						isok=false;
 					}
 					//波形显示小于两格
-					while(vtemp<vrange/8.0*2)
+					while(vtemp<vrange/8.0)
 					{
 						viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
 						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
@@ -1372,7 +1382,7 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			}
 		}
 		//保存电压值
-		for(int j=0;j<4;j++)
+		for(int j=0;j<PulseCount;j++)
 		{
 			Result[j].push_back(u[j]);
 		}
@@ -1399,13 +1409,14 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
-		for(int j=0;j<4;j++)
+		for(int j=0;j<PulseCount;j++)
 		{
 			viPrintf(vip,":timebase:window:position %f\n",zoomPosition[j]);
 			viPrintf(vip,":timebase:window:range %f\n",zoomRange[j]);
 			viPrintf(vip,":measure:source channel%d\n",i+1);
-			viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
+			u[j]=autoV(i+1);
 			Result[j].push_back(u[j]);
+			angle=pturntable->ReadCurrentAngle();
 			MAngle[j].push_back(angle);
 		}
 	}//最后一个角度的电压值
@@ -1421,6 +1432,11 @@ void CMeasure::huatu_muldir()
 	CRect rect;
 	pWnd->GetClientRect(rect);
 	CDC *pDC = pWnd->GetDC();
+	CBrush rebrush;
+	rebrush.CreateSolidBrush (RGB(255,255,255));//白色刷子
+	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
+	pDC->Rectangle (rect);//清空picture中的绘画
+	pDC->SelectObject (pOldBrush);
 	CPen newPen;
 	newPen.CreatePen(PS_SOLID, 1, RGB(0,0,0));
 	CPen* pOldPen = (CPen*)pDC->SelectObject(&newPen);
@@ -1467,7 +1483,7 @@ void CMeasure::huatu_muldir()
 	{
 		if(isChaChoose[ch])//只有一个通道
 		{
-			for(int j=0;j<4;j++)
+			for(int j=0;j<PulseCount;j++)
 			{
 				pOldPen=pDC->SelectObject(&pPen[j]);
 				if(Result[j].size()==0) continue;
@@ -1514,7 +1530,7 @@ float autoV(int chann)
 		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	//波形显示小于两格
-	while(vtemp<vrange/8.0*2)
+	while(vtemp<vrange/8.0)
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);

@@ -21,6 +21,7 @@ extern CString strDirFile;
 extern int Ratio,Gain[4],MeaCount;
 extern int StartAngle,EndAngle;
 extern bool isChange;
+extern int PulseCount;
 
 extern void CreateBurst(float f,float v,float wid,float perio);
 extern float CalSensity(float mp,float ux,float up,float dx,float dp);

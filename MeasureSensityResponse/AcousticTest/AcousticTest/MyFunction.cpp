@@ -16,7 +16,7 @@ CString strDirFile="";
 int Ratio=100,Gain[4]={1,1,1,1},MeaCount=1;
 int StartAngle=-180,EndAngle=180;
 bool isChange=false;
-
+int PulseCount=4;
 void CreateBurst(float f,float v,float wid,float perio)
 {
 	float ncyd=f*wid;
@@ -66,13 +66,13 @@ void CreateMulFrePulse(float f1,float v,float delf)
 	float fs=100000;//采样率
 	//float t0=0.005f;//脉冲宽度
 	//float T0=0.03f;//各频率脉冲间隔
-	int points=(int)(0.03*fs);//每个频率段的点数
-	int point=(int)(0.005*fs);//真正的脉冲的点数
+	int points=(int)(0.01*fs);//每个频率段的点数
+	int point=(int)(0.002*fs);//真正的脉冲的点数
 	//viPrintf(vig,"*rst\n");
 	viPrintf(vig,"*cls\n");
 	strcpy_s(SCPIcmd,"data volatile");
 	float f;
-	for(int i=0;i<8;i++)
+	for(int i=0;i<PulseCount;i++)
 	{
 		f=f1+i*delf;
 		for(int j=0;j<point;j++)
