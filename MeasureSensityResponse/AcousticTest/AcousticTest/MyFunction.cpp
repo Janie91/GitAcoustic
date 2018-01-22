@@ -60,21 +60,19 @@ float CalResponse(float mp,float ux,float up,float d)
 	res=20*log10(up)-20*log10(ux)+20*log10(d)-mp;
 	return res;
 }
-void CreateMulFrePulse(float f1,float v,float delf)
+void CreateMulFrePulse(int fs,float f1,float delf,float wid,float f0,float v,float repeat)
 {
 	char SCPIcmd[1000000];
-	float fs=100000;//采样率
-	//float t0=0.005f;//脉冲宽度
-	//float T0=0.03f;//各频率脉冲间隔
-	int points=(int)(0.01*fs);//每个频率段的点数
-	int point=(int)(0.002*fs);//真正的脉冲的点数
-	//viPrintf(vig,"*rst\n");
+	viPrintf(vig,"*rst\n");
 	viPrintf(vig,"*cls\n");
+	int point=(int)(f*wid*fs);//每个脉冲的点数
+	int points=(int)(f*5*wid*fs);//每个频率段的点数
 	strcpy_s(SCPIcmd,"data volatile");
 	float f;
 	for(int i=0;i<PulseCount;i++)
 	{
 		f=f1+i*delf;
+		
 		for(int j=0;j<point;j++)
 		{
 			if(0==i&&0==j) sprintf_s(SCPIcmd,"%s, %4.2f",SCPIcmd,sin(2*PI*f*j/fs));
@@ -92,7 +90,13 @@ void CreateMulFrePulse(float f1,float v,float delf)
 	viPrintf(vig,"function:user M_ARB\n");
 	viPrintf(vig,"function:shape user\n");
 	viPrintf(vig,"output:load 50\n");
-	viPrintf(vig,"frequency 10;voltage %f\n",v);
+	viPrintf(vig,"frequency %f;voltage %f\n",f0,v);
+	viPrintf(vig,"burst:mode triggered\n");
+	viPrintf(vig,"burst:ncycles 1\n");
+	viPrintf(vig,"burst:internal:period %f\n",repeat);
+	viPrintf(vig,"burst:phase 0\n");
+	viPrintf(vig,"trigger:source immediate\n");
+	viPrintf(vig,"burst:state on\n");
 	viPrintf(vig,"output:sync on\n");
 	viPrintf(vig,"output on\n");
 	

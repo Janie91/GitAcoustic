@@ -77,9 +77,12 @@ void CSetConditionDlg::OnBnClickedConditionok()
 	Gain[1]=m_gain2;
 	Gain[2]=m_gain3;
 	Gain[3]=m_gain4;
-	CString temp;
-	m_MeaCount.GetLBText(m_MeaCount.GetCurSel(),temp);	
-	MeaCount=atoi(temp);
+	if(ChooseItem==0)
+	{
+		CString temp;
+		m_MeaCount.GetLBText(m_MeaCount.GetCurSel(),temp);	
+		MeaCount=atoi(temp);
+	}
 	CDialog::OnOK();
 }
 
@@ -156,6 +159,16 @@ BOOL CSetConditionDlg::OnInitDialog()
 	// TODO:  Add extra initialization here
 	SetDlgItemText(IDC_standFile,strDirFile);
 	m_MeaCount.SetCurSel(MeaCount-1);
+	if(ChooseItem==0)
+	{
+		GetDlgItem(IDC_SmeaCount)->EnableWindow(TRUE);
+		GetDlgItem(IDC_MeaCount)->EnableWindow(TRUE);
+	}
+	else
+	{
+		GetDlgItem(IDC_SmeaCount)->EnableWindow(FALSE);
+		GetDlgItem(IDC_MeaCount)->EnableWindow(FALSE);
+	}
 	if(ChooseItem==5)
 	{
 		SetDlgItemText(IDC_ch1Dis,"FJæ‡¿Î");

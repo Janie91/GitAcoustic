@@ -26,6 +26,7 @@ using namespace std;
 
 
 vector<vector<float>>Result(4,vector<float>(0));
+vector<vector<float>>MulSensity(4,vector<float>(0));
 vector<float> MeaAngle;
 vector<vector<float>>MAngle(4,vector<float>(0));
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
@@ -274,7 +275,7 @@ void CMeasure::OnBnClickedView()
 	else
 	{
 		if(ChooseItem==4)
-			CreateMulFrePulse(f*1000,v/1000,deltaf*1000);
+			CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,25,v/1000,Brep);
 		else CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		Sleep(100);
 		ScopeTrigger();
@@ -324,23 +325,32 @@ void CMeasure::OnBnClickedStartmea()
 		return;
 	}
 	SetDlgItemTextA(IDC_Show,"正在测量，请稍后......");
+	clock_t t_start,t_end;
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
+		t_start=clock();
 		MeasureSensity();
+		t_end=clock();
 		SetTimer(1,1000,NULL);
 		break;
 	case 1://测量发射电压响应
+		t_start=clock();
 		MeasureResponse();
+		t_end=clock();
 		SetTimer(2,1000,NULL);
 		break;
 	case 2://测量接收指向性
 	case 3://测量发射指向性
+		t_start=clock();
 		MeasureDir();
+		t_end=clock();
 		SetTimer(3,1000,NULL);
 		break;
 	case 4://多频点测量指向性
+		t_start=clock();
 		MeaMulDir();
+		t_end=clock();
 		SetTimer(4,1000,NULL);
 		break;
 	case 5://互易法自动测量灵敏度
@@ -350,14 +360,15 @@ void CMeasure::OnBnClickedStartmea()
 	}
 	
 	SetDlgItemTextA(IDC_Show,"测量完成......");
+	CString stemp;
+	stemp.Format("测量时间为 %.4f s",(double)(t_end-t_start)/CLOCKS_PER_SEC);
+	MessageBox(stemp);
 }
 
 void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-
-	//CreateMulFrePulse(f*1000,v/1000,deltaf*1000);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -462,12 +473,12 @@ void CMeasure::Onsave()
 	//		_variant_t(Result[i]));
 	//}
 	///debug
-	int col=1;
+	int col=1;//有多列的时候
 	for(int i=0;i<4;i++)
 	{
 		if(isChaChoose[i])
 		{
-			if(ChooseItem==4)
+			if(ChooseItem==4)//多频点测指向性
 			{
 				for(int j=0;j<4;j++)
 				{
@@ -479,6 +490,26 @@ void CMeasure::Onsave()
 						//设置k+3排的第2列数据或第3列……
 						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+2)),
 						_variant_t(Result[j][k]));
+					}
+				}
+			}
+			else if(ChooseItem==0&&MeaCount>1)//灵敏度多次测量
+			{
+				if(MulSensity[i].size()==0) continue;
+				unsigned int sz=MulSensity[i].size()/MeaCount;
+				for(int c=0;c<MeaCount;c++)
+				{
+					col++;
+					for(unsigned int j=0;j<sz;j++)
+					{
+						if(col==2)
+						{
+							range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
+							_variant_t(startf+deltaf*j));
+						}
+						//设置j+3排的第2列数据或第3列……
+						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
+						_variant_t(MulSensity[i][j+c*sz]));
 					}
 				}
 			}
@@ -535,7 +566,6 @@ void CMeasure::Onsave()
 void CMeasure::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: Add your message handler code here and/or call default
-	//renew();
 	switch(nIDEvent)
 	{
 	case 1:
@@ -560,23 +590,18 @@ void CMeasure::renew()
 		zoomPosition[i]=-1;
 		zoomRange[i]=-1;
 		Result[i].clear();
+		MulSensity[i].clear();
 	}
-	//KillTimer(1);
-	//KillTimer(2);
 	CWnd *pWnd=GetDlgItem(IDC_picture);
 	pWnd->UpdateWindow();
 	CDC *pDC=pWnd->GetDC();
 	CBrush rebrush;
 	rebrush.CreateSolidBrush (RGB(255,255,255));
 	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
-	//CPen newPen;
-	//newPen.CreatePen (PS_SOLID,1,RGB(0,0,0));
-	//CPen *poldPen=pDC->SelectObject(&newPen);
 	CRect rect;
 	pWnd->GetClientRect(rect);
 	pDC->Rectangle (rect);
 	pDC->SelectObject (pOldBrush);
-	/*pDC->SelectObject(poldPen);*/
 }
 void CMeasure::huatu_sensity()
 {
@@ -695,87 +720,108 @@ void CMeasure::MeasureSensity()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n测量的频率范围 %.1fkHz~%.1fkHz",startf,endf);
+	stemp.Format("参数设置完成?是否开始测量？\n测量的频率范围 %.1fkHz~%.1fkHz\n %d次测量",startf,endf,MeaCount);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
-	f=startf;
 	isMeasure=true;
-	while(isMeasure&&f<=endf)
+	for(int c=0;isMeasure&&c<MeaCount;c++)
 	{
-		//用来接收“停止测量”按钮按下的消息
-		MSG  msg;
-		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
-		{          
-			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
-					break ;          
-			TranslateMessage (&msg) ;          
-			DispatchMessage (&msg) ;          
-		} 
+		f=startf;
+		for(int i=0;i<4;i++)
+		{
+			if(isChaChoose[i]) Result[i].clear();
+			u[i]=-1;
+		}
+		if(MeaCount>1)
+		{
+			stemp.Format("正在进行第 %d 次测量，请稍后......",c+1);
+			SetDlgItemTextA(IDC_Show,stemp);
+		}
+		while(isMeasure&&f<=endf)
+		{
+			//用来接收“停止测量”按钮按下的消息
+			MSG  msg;
+			if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+			{          
+				if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED)) 
+				{
+					isMeasure=false;
+					break ; 
+				}
+				TranslateMessage (&msg) ;          
+				DispatchMessage (&msg) ;          
+			} 
 
-		viPrintf(vip,":run\n");
-		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
-		viPrintf(vip,":timebase:mode window\n");
-		for(int i=0;i<4;i++)
-		{
-			if(isChaChoose[i])
+			viPrintf(vip,":run\n");
+			CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+			viPrintf(vip,":timebase:mode window\n");
+			for(int i=0;i<4;i++)
 			{
-				float vrange,vtemp;
-				bool isok=true;
-				int flag=0;
-				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
-				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
-				viPrintf(vip,":measure:source channel%d\n",i+1);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				vtemp=u[i];
-				while(vtemp<-1e8||vrange<-1e8)
+				if(isChaChoose[i])
 				{
-					if(flag>10)
+					float vrange,vtemp;
+					bool isok=true;
+					int flag=0;
+					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
+					viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
+					viPrintf(vip,":measure:source channel%d\n",i+1);
+					viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					vtemp=u[i];
+					while(vtemp<-1e8||vrange<-1e8)
 					{
-						isok=false;
-						break;
+						if(flag>10)
+						{
+							isok=false;
+							break;
+						}
+						flag++;
+						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 					}
-					flag++;
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				}
-				while(vtemp>vrange/8.0*4) 
-				{
-					viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					isok=false;
-				}
-				//波形显示小于两格
-				while(vtemp<vrange/8.0)
-				{
-					viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					isok=false;
-				}
-				if(isok==false)
-				{
-					u[i]=0;
-					i=i-1;//此通道重新测量一遍					
+					while(vtemp>vrange/8.0*4) 
+					{
+						viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
+						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+						isok=false;
+					}
+					//波形显示小于两格
+					while(vtemp<vrange/8.0)
+					{
+						viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+						isok=false;
+					}
+					if(isok==false)
+					{
+						u[i]=0;
+						i=i-1;//此通道重新测量一遍					
+					}
 				}
 			}
+			for(int i=0;i<4;i++)
+			{
+				if(!isChaChoose[i]||i==chaRefer-1) continue;
+			
+				map<float,float>::iterator it=standMp.find(f*1000);
+				if(it==standMp.end())
+				{
+					Mp=(standMp.lower_bound(f*1000)->second+standMp.upper_bound(f*1000)->second)/2;
+				}
+				else
+					Mp=it->second;
+				Result[i].push_back(CalSensity(Mp,u[i]/Gain[i],u[chaRefer-1]/Gain[chaRefer-1],d[i],d[chaRefer-1]));
+				//测出的电压值要除以放大倍数
+			}
+			huatu_sensity();
+			f+=deltaf;
 		}
 		for(int i=0;i<4;i++)
 		{
-			if(!isChaChoose[i]||i==chaRefer-1) continue;
-			
-			map<float,float>::iterator it=standMp.find(f*1000);
-			if(it==standMp.end())
-			{
-				Mp=(standMp.lower_bound(f*1000)->second+standMp.upper_bound(f*1000)->second)/2;
-			}
-			else
-				Mp=it->second;
-			Result[i].push_back(CalSensity(Mp,u[i]/Gain[i],u[chaRefer-1]/Gain[i],d[i],d[chaRefer-1]));
-			//测出的电压值要除以放大倍数
+			if(isChaChoose[i]&&i!=chaRefer-1)
+				MulSensity[i].insert(MulSensity[i].end(),Result[i].begin(),Result[i].end());
 		}
-		huatu_sensity();
-		f+=deltaf;
 	}
 
 	viPrintf(vip,":timebase:mode main\n");
@@ -785,9 +831,6 @@ void CMeasure::MeasureResponse()
 	float Mp=-1;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
-
-	/*Capture(ch,chcount);
-	Sleep(delay+10);*/
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
 	{
@@ -813,15 +856,16 @@ void CMeasure::MeasureResponse()
 		MSG  msg;
 		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
 		{          
-			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))          
-					break ;          
+			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))  
+			{
+				isMeasure=false;
+				break ;
+			}
 			TranslateMessage (&msg) ;          
 			DispatchMessage (&msg) ;          
 		} 
 		viPrintf(vip,":run\n");
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
-		//Capture(ch,chcount);
-		//Sleep(delay+10);
 		viPrintf(vip,":timebase:mode window\n");
 		for(int i=0;i<4;i++)
 		{
@@ -881,7 +925,7 @@ void CMeasure::MeasureResponse()
 			}
 			else
 				Mp=it->second;
-			Result[i].push_back(CalResponse(Mp,u[i]*Ratio,u[chaRefer-1]/Gain[i],d[chaRefer-1]));
+			Result[i].push_back(CalResponse(Mp,u[i]*Ratio/Gain[i],u[chaRefer-1]/Gain[chaRefer-1],d[chaRefer-1]));
 			//测出的电压值要除以放大倍数
 		}
 		huatu_response();
@@ -992,7 +1036,6 @@ void CMeasure::MeasureDir()
 	}
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
-	pturntable->Invalidate();//激活回转窗口，不知道有没有用？？？？？？？？？
 	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
 	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
@@ -1253,21 +1296,19 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		AfxMessageBox("请先连接控制回转系统！");
 		return;
 	}
-	CreateMulFrePulse(f*1000,v/1000,deltaf*1000);//多频点信号
+	CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,25,v/1000,Brep);//多频点信号
 	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
 	{
 		if(isChaChoose[i])//只有一个是true
 		{
-			for(int j=0;j<PulseCount;j++)//PulseCount个频点
-			{
-				CString s;
-				s.Format("完成选择通道%d的第%d个频率的测量区域后点击确定",i+1,j+1);
-				MessageBox(s);
-				viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[j]);
-				viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[j]);
-			}
+			CString s;
+			s.Format("完成选择通道%d的第1个频率的测量区域后点击确定",i+1);
+			MessageBox(s);
+			viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[0]);
+			viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[0]);
+		
 		}
 	}
 	viPrintf(vip,":timebase:mode main\n");
@@ -1296,7 +1337,7 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	stemp.Format("参数设置完成?是否开始测量？\n起始频率为 %.1f\n频率点数 %d\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,PulseCount,StartAngle,EndAngle,pturntable->m_Speed);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return;
 	viPrintf(vip,":run\n");
-	viPrintf(vip,":timebase:mode window\n");
+	
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
@@ -1304,8 +1345,11 @@ void CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		{
 			for(int j=0;j<PulseCount;j++)
 			{
-				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[j]);
-				viPrintf(vip,":timebase:window:range %f\n",zoomRange[j]);
+				viPrintf(vip,":timebase:mode main\n");
+				viPrintf(vip,":timebase:position %f\n",-Bwid*5*j);//将波形移动波形间隔，也就是移到下一个频率点
+				viPrintf(vip,":timebase:mode window\n");
+				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]);
+				viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
 				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
 				u[j]=autoV(i+1);
