@@ -36,14 +36,14 @@ public:
 	void renew();
 	void huatu_sensity();
 	void Capture(vector<int> cha,int count);
-	void MeasureSensity();
-	void MeasureResponse();
+	int MeasureSensity();
+	int MeasureResponse();
 	void huatu_response();
-	void MeasureDir();
+	int MeasureDir();
 	void huatu_recidir();
-	void MeaMulDir();
+	int MeaMulDir();
 	void huatu_muldir();
-	void MeaHuyi();
+	int MeaHuyi();
 	void huatu_huyi();
 	
 private:

@@ -65,8 +65,8 @@ void CreateMulFrePulse(int fs,float f1,float delf,float wid,float f0,float v,flo
 	char SCPIcmd[1000000];
 	viPrintf(vig,"*rst\n");
 	viPrintf(vig,"*cls\n");
-	int point=(int)(f*wid*fs);//每个脉冲的点数
-	int points=(int)(f*5*wid*fs);//每个频率段的点数
+	int point=(int)(wid*fs);//每个脉冲的点数
+	int points=(int)(5*wid*fs);//每个频率段的点数
 	strcpy_s(SCPIcmd,"data volatile");
 	float f;
 	for(int i=0;i<PulseCount;i++)
