@@ -228,7 +228,7 @@ void autoScale(int chaflag,int cha,int chacount)
 void CMeasure::OnBnClickedView()
 {
 	// TODO: Add your control notification handler code here
-	SetDlgItemTextA(IDC_Show,"正在调整信号，请稍后......");
+	SetDlgItemTextA(IDC_Show,"正在调整信号，请稍候......");
 	//int delay=(int)(Brep*1000);//延迟delay，单位ms
 	renew();
 	
@@ -248,6 +248,7 @@ void CMeasure::OnBnClickedView()
 	{
 		AfxMessageBox("请在示波器参数设置中选择测量通道！");
 		viPrintf(vip,"*rst\n");
+		SetDlgItemTextA(IDC_Show,"");
 		return;
 	}
 	if(ChooseItem==5)
@@ -257,6 +258,7 @@ void CMeasure::OnBnClickedView()
 			AfxMessageBox("开关矩阵连通不正确！");
 			viClose(U2751);
 			viClose(rm);
+			SetDlgItemTextA(IDC_Show,"");
 			return;
 		}
 		viClear(U2751);
@@ -275,11 +277,19 @@ void CMeasure::OnBnClickedView()
 	else
 	{
 		if(ChooseItem==4)
+		{
 			CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,25,v/1000,Brep);
-		else CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
-		Sleep(100);
-		ScopeTrigger();
-		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
+			Sleep(100);
+			ScopeTrigger();
+			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*5*PulseCount);//设置时间轴代表的时间长度
+		}
+		else 
+		{
+			CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+			Sleep(100);
+			ScopeTrigger();
+			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
+		}
 		for(int i=0;i<4;i++)
 		{
 			if(isChaChoose[i])
@@ -305,7 +315,7 @@ void CMeasure::OnBnClickedStartmea()
 {
 	// TODO: Add your control notification handler code here
 	renew();
-	if(standMp.empty()) 
+	if((ChooseItem==0||ChooseItem==1)&&standMp.empty()) 
 	{
 		AfxMessageBox("请选择标准水听器文件！");
 		return;
@@ -323,57 +333,65 @@ void CMeasure::OnBnClickedStartmea()
 		AfxMessageBox("请选择示波器的测量通道！");
 		return;
 	}
-	SetDlgItemTextA(IDC_Show,"正在测量，请稍后......");
-	clock_t t_start,t_end;
+	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
 	int meaStatus=0;
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
-		t_start=clock();
 		meaStatus=MeasureSensity();
-		t_end=clock();
-		if(meaStatus==-1) return;
+		if(meaStatus==-1) 
+		{
+			SetDlgItemTextA(IDC_Show,"测量中止......");
+			return;
+		}
 		SetTimer(1,1000,NULL);
 		break;
 	case 1://测量发射电压响应
-		t_start=clock();
 		meaStatus=MeasureResponse();
-		t_end=clock();
-		if(meaStatus==-1) return;
+		if(meaStatus==-1) 
+		{
+			SetDlgItemTextA(IDC_Show,"测量中止......");
+			return;
+		}
 		SetTimer(2,1000,NULL);
 		break;
 	case 2://测量接收指向性
 	case 3://测量发射指向性
-		t_start=clock();
 		meaStatus=MeasureDir();
-		t_end=clock();
-		if(meaStatus==-1) return;
+		if(meaStatus==-1) 
+		{
+			SetDlgItemTextA(IDC_Show,"测量中止......");
+			return;
+		}
 		SetTimer(3,1000,NULL);
 		break;
 	case 4://多频点测量指向性
-		t_start=clock();
 		meaStatus=MeaMulDir();
-		t_end=clock();
-		if(meaStatus==-1) return;
+		if(meaStatus==-1) 
+		{
+			SetDlgItemTextA(IDC_Show,"测量中止......");
+			return;
+		}
 		SetTimer(4,1000,NULL);
 		break;
 	case 5://互易法自动测量灵敏度
 		meaStatus=MeaHuyi();
-		if(meaStatus==-1) return;
+		if(meaStatus==-1) 
+		{
+			SetDlgItemTextA(IDC_Show,"测量中止......");
+			return;
+		}
 		SetTimer(5,1000,NULL);
 		break;
 	}
-	
 	SetDlgItemTextA(IDC_Show,"测量完成......");
-	CString stemp;
-	stemp.Format("测量时间为 %.4f s",(double)(t_end-t_start)/CLOCKS_PER_SEC);
-	MessageBox(stemp);
 }
 
 void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
+	huatu_recidir();
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -1230,13 +1248,45 @@ void CMeasure::huatu_recidir()
 		pDC->LineTo(x,y);//画了二三象限的半径
 	}
 	CString str;
-	str.Format("%d",0);
+	str.Format("%d°",0);
 	pDC->TextOutA(0,-R-20,str);
-	str.Format("%d",-90);
-	pDC->TextOutA(-R-25,0,str);
-	str.Format("%d",90);
+	str.Format("%d°",30);
+	x=(int)(R*sin(PI/6));
+	y=-(int)(R*cos(PI/6));
+	pDC->TextOutA(x+10,y-20,str);
+	str.Format("%d°",60);
+	x=(int)(R*sin(PI/3));
+	y=-(int)(R*cos(PI/3));
+	pDC->TextOutA(x+10,y-20,str);
+	str.Format("%d°",90);
 	pDC->TextOutA(R+10,0,str);
-	str.Format("-180(180)");
+	str.Format("%d°",120);
+	x=(int)(R*sin(2*PI/3));
+	y=-(int)(R*cos(2*PI/3));
+	pDC->TextOutA(x+10,y+20,str);
+	str.Format("%d°",150);
+	x=(int)(R*sin(5*PI/6));
+	y=-(int)(R*cos(5*PI/6));
+	pDC->TextOutA(x+10,y+20,str);
+	str.Format("%d°",-30);
+	x=(int)(R*sin(-PI/6));
+	y=-(int)(R*cos(-PI/6));
+	pDC->TextOutA(x-30,y-20,str);
+	str.Format("%d°",-60);
+	x=(int)(R*sin(-PI/3));
+	y=-(int)(R*cos(-PI/3));
+	pDC->TextOutA(x-30,y-20,str);
+	str.Format("%d°",-90);
+	pDC->TextOutA(-R-35,0,str);
+	str.Format("%d°",-120);
+	x=(int)(R*sin(-2*PI/3));
+	y=-(int)(R*cos(-2*PI/3));
+	pDC->TextOutA(x-30,y+20,str);
+	str.Format("%d°",-150);
+	x=(int)(R*sin(-5*PI/6));
+	y=-(int)(R*cos(-5*PI/6));
+	pDC->TextOutA(x-30,y+20,str);
+	str.Format("-180°(180°)");
 	pDC->TextOutA(-20,R+10,str);
 	////debug
 	//CPen ppen;
@@ -1361,10 +1411,11 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		{
 			for(int j=0;j<PulseCount;j++)
 			{
-				viPrintf(vip,":timebase:mode main\n");
-				viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);//将波形移动波形间隔，也就是移到下一个频率点
+				//viPrintf(vip,":timebase:mode main\n");
+				//viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);//将波形移动波形间隔，也就是移到下一个频率点
 				viPrintf(vip,":timebase:mode window\n");
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]+Bwid/1000*5*j);
+				//将zoom框移动一个间距
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
 				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
@@ -1374,25 +1425,13 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			}
 		}
 	}//读取第一个角度的电压值
-	viPrintf(vip,":timebase:mode main\n");
-	viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
+	//viPrintf(vip,":timebase:mode main\n");
+	//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
 	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
 	else pturntable->RotateLeft();//逆时针转动
 	angle=pturntable->ReadCurrentAngle();	
 	while(isMeasure&&((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle)))
 	{
-		//用来接收“停止测量”按钮按下的消息
-		MSG  msg;
-		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
-		{          
-			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))
-			{
-				isMeasure=false;
-				break ;  
-			}
-			TranslateMessage (&msg) ;          
-			DispatchMessage (&msg) ;          
-		}
 		for(int i=0;i<4;i++)
 		{
 			if(isChaChoose[i])
@@ -1400,7 +1439,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 				for(int j=0;j<PulseCount;j++)
 				{
 					float vrange=-1,vtemp=-1;
-					bool isok=true;
+					//bool isok=true;
 					int flag=0;
 					viPrintf(vip,":timebase:mode main\n");
 					viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);
@@ -1415,37 +1454,38 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 					{
 						if(flag>2)
 						{
-							isok=false;
+							//isok=false;
 							break;
 						}
 						flag++;
 						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
 						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 					}
-					while(vtemp>vrange/8.0*4) 
+					while(vtemp>9.9e+37) 
 					{
 						viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
 						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
 						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-						isok=false;
+						//isok=false;
 					}
 					//波形显示小于一格
-					while(vtemp<vrange/8.0)
-					{
-						viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-						isok=false;
-					}
+					//while(vtemp<vrange/8.0)
+					//{
+					//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					//	//isok=false;
+					//}
+					viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
 					angle=pturntable->ReadCurrentAngle();
 					MAngle[j].push_back(angle);
-					if(isok==false)
-					{
-						u[j]=0;
-						MAngle[j].pop_back();
-						j=j-1;//此通道重新测量一遍
-					
-					}
+					//if(isok==false)
+					//{
+					//	u[j]=0;
+					//	MAngle[j].pop_back();
+					//	j=j-1;//此通道重新测量一遍
+					//
+					//}
 				}
 			}
 		}
@@ -1454,8 +1494,8 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		{
 			Result[j].push_back(u[j]);
 		}
-		viPrintf(vip,":timebase:mode main\n");
-		viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
+		//viPrintf(vip,":timebase:mode main\n");
+		//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
 		//绘制极坐标图
 		huatu_muldir();
 		angle=pturntable->ReadCurrentAngle();
@@ -1480,8 +1520,8 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		if(!isChaChoose[i]) continue;
 		for(int j=0;j<PulseCount;j++)
 		{
-			viPrintf(vip,":timebase:mode main\n");
-			viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);
+			//viPrintf(vip,":timebase:mode main\n");
+			//viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);
 			viPrintf(vip,":timebase:mode window\n");
 			viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]+Bwid/1000*5*j);
 			viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
@@ -1493,8 +1533,8 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		}
 	}//最后一个角度的电压值
 	huatu_muldir();
-	viPrintf(vip,":timebase:mode main\n");
-	viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
+	//viPrintf(vip,":timebase:mode main\n");
+	//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
 	pturntable->SetTimer(1,200,NULL);//重启回转界面的定时器
 	clock_t t_end=clock();
 	stemp.Format("测量时间为 %.4f s",(double)(t_end-t_start)/CLOCKS_PER_SEC);
@@ -1542,13 +1582,45 @@ void CMeasure::huatu_muldir()
 		pDC->LineTo(x,y);//画了二三象限的半径
 	}
 	CString str;
-	str.Format("%d",0);
+	str.Format("%d°",0);
 	pDC->TextOutA(0,-R-20,str);
-	str.Format("%d",-90);
-	pDC->TextOutA(-R-25,0,str);
-	str.Format("%d",90);
+	str.Format("%d°",30);
+	x=(int)(R*sin(PI/6));
+	y=-(int)(R*cos(PI/6));
+	pDC->TextOutA(x+10,y-20,str);
+	str.Format("%d°",60);
+	x=(int)(R*sin(PI/3));
+	y=-(int)(R*cos(PI/3));
+	pDC->TextOutA(x+10,y-20,str);
+	str.Format("%d°",90);
 	pDC->TextOutA(R+10,0,str);
-	str.Format("-180(180)");
+	str.Format("%d°",120);
+	x=(int)(R*sin(2*PI/3));
+	y=-(int)(R*cos(2*PI/3));
+	pDC->TextOutA(x+10,y+20,str);
+	str.Format("%d°",150);
+	x=(int)(R*sin(5*PI/6));
+	y=-(int)(R*cos(5*PI/6));
+	pDC->TextOutA(x+10,y+20,str);
+	str.Format("%d°",-30);
+	x=(int)(R*sin(-PI/6));
+	y=-(int)(R*cos(-PI/6));
+	pDC->TextOutA(x-30,y-20,str);
+	str.Format("%d°",-60);
+	x=(int)(R*sin(-PI/3));
+	y=-(int)(R*cos(-PI/3));
+	pDC->TextOutA(x-30,y-20,str);
+	str.Format("%d°",-90);
+	pDC->TextOutA(-R-35,0,str);
+	str.Format("%d°",-120);
+	x=(int)(R*sin(-2*PI/3));
+	y=-(int)(R*cos(-2*PI/3));
+	pDC->TextOutA(x-30,y+20,str);
+	str.Format("%d°",-150);
+	x=(int)(R*sin(-5*PI/6));
+	y=-(int)(R*cos(-5*PI/6));
+	pDC->TextOutA(x-30,y+20,str);
+	str.Format("-180°(180°)");
 	pDC->TextOutA(-20,R+10,str);
 	CPen pPen[4];
 	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔

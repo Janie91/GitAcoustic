@@ -104,8 +104,8 @@ BOOL CAcousticTestDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	//...My code...
-	SetDlgItemText(IDC_SigName,"TCPIP0::10.193.49.226::inst0::INSTR");
-	SetDlgItemText(IDC_ScopName,"TCPIP0::10.193.49.227::inst0::INSTR");
+	SetDlgItemText(IDC_SigName,"TCPIP0::10.193.49.239::inst0::INSTR");
+	SetDlgItemText(IDC_ScopName,"TCPIP0::10.193.49.240::inst0::INSTR");
 	//...end...
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -172,7 +172,7 @@ void CAcousticTestDlg::OnBnClickedOk()
 	status=viOpen(vidg,SigName,VI_NULL,VI_NULL,&vig);
 	if(status!=0)
 	{
-		AfxMessageBox("函数发生器连接不成功，请IP地址或本地连接再重新连接！");
+		AfxMessageBox("函数发生器连接不成功，请检查IP地址或本地连接再重新连接！");
 		viClose(vig);
 		viClose(vidg);
 		return;
@@ -185,7 +185,7 @@ void CAcousticTestDlg::OnBnClickedOk()
 		status=viOpen(vidp,ScopName,VI_NULL,VI_NULL,&vip);
 		if(status!=0)
 		{
-			AfxMessageBox("示波器连接不成功，请IP地址或本地连接再重新连接！");
+			AfxMessageBox("示波器连接不成功，请检查IP地址或本地连接再重新连接！");
 			viClose(vip);
 			viClose(vidp);
 			viClose(vig);

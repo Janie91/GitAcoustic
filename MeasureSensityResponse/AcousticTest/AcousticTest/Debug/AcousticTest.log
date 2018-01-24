@@ -1,11 +1,13 @@
-﻿生成启动时间为 2018/1/23 17:44:42。
+﻿生成启动时间为 2018/1/24 15:46:25。
      1>项目“E:\ChenYuhong\GitAcoustic\MeasureSensityResponse\AcousticTest\AcousticTest\AcousticTest.vcxproj”在节点 2 上(build 个目标)。
      1>InitializeBuildStatus:
          正在创建“Debug\AcousticTest.unsuccessfulbuild”，因为已指定“AlwaysCreate”。
        ClCompile:
          所有输出均为最新。
-         D:\installSoftware\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _MBCS /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Debug\AcousticTest.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt Measure.cpp
+         D:\installSoftware\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _MBCS /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Debug\AcousticTest.pch" /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt AcousticTestDlg.cpp Measure.cpp
          Measure.cpp
+         AcousticTestDlg.cpp
+         正在生成代码...
        ResourceCompile:
          所有输出均为最新。
        Link:
@@ -31,4 +33,4 @@
 
 生成成功。
 
-已用时间 00:00:01.34
+已用时间 00:00:01.20
