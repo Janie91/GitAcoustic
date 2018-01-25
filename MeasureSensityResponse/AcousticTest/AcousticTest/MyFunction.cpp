@@ -60,7 +60,7 @@ float CalResponse(float mp,float ux,float up,float d)
 	res=20*log10(up)-20*log10(ux)+20*log10(d)-mp;
 	return res;
 }
-void CreateMulFrePulse(int fs,float f1,float delf,float wid,float f0,float v,float repeat)
+void CreateMulFrePulse(int fs,float f1,float delf,float wid,float v,float repeat)
 {
 	char SCPIcmd[1000000];
 	viPrintf(vig,"*rst\n");
@@ -90,7 +90,7 @@ void CreateMulFrePulse(int fs,float f1,float delf,float wid,float f0,float v,flo
 	viPrintf(vig,"function:user M_ARB\n");
 	viPrintf(vig,"function:shape user\n");
 	viPrintf(vig,"output:load 50\n");
-	viPrintf(vig,"frequency %f;voltage %f\n",f0,v);
+	viPrintf(vig,"frequency 25;voltage %f\n",v);
 	viPrintf(vig,"burst:mode triggered\n");
 	viPrintf(vig,"burst:ncycles 1\n");
 	viPrintf(vig,"burst:internal:period %f\n",repeat);

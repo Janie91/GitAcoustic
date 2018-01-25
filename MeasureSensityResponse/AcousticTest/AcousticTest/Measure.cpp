@@ -278,7 +278,7 @@ void CMeasure::OnBnClickedView()
 	{
 		if(ChooseItem==4)
 		{
-			CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,25,v/1000,Brep);
+			CreateMulFrePulse(Fs,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);
 			Sleep(100);
 			ScopeTrigger();
 			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*5*PulseCount);//设置时间轴代表的时间长度
@@ -391,7 +391,7 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	huatu_recidir();
+	CreateMulFrePulse(Fs,5000,1000,Bwid/1000,0.5,1);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -1362,7 +1362,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		AfxMessageBox("请先连接控制回转系统！");
 		return -1;
 	}
-	CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,25,v/1000,Brep);//多频点信号
+	CreateMulFrePulse(Fs,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);//多频点信号
 	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -1409,6 +1409,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		if(!isChaChoose[i]) continue;
 		else
 		{
+			viPrintf(vip,":digitize channel%d\n",i+1);
 			for(int j=0;j<PulseCount;j++)
 			{
 				//viPrintf(vip,":timebase:mode main\n");
@@ -1423,10 +1424,12 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 				Result[j].push_back(u[j]);
 				MAngle[j].push_back(angle);//第一个点所有的角度一样
 			}
+			viPrintf(vip,":run\n");
 		}
 	}//读取第一个角度的电压值
 	//viPrintf(vip,":timebase:mode main\n");
 	//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
+	viPrintf(vip,":timebase:mode window\n");
 	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
 	else pturntable->RotateLeft();//逆时针转动
 	angle=pturntable->ReadCurrentAngle();	
@@ -1436,66 +1439,20 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		{
 			if(isChaChoose[i])
 			{
+				viPrintf(vip,":digitize channel%d\n",i+1);
+				angle=pturntable->ReadCurrentAngle();//读角度的时间
 				for(int j=0;j<PulseCount;j++)
 				{
-					float vrange=-1,vtemp=-1;
-					//bool isok=true;
-					int flag=0;
-					viPrintf(vip,":timebase:mode main\n");
-					viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);
-					viPrintf(vip,":timebase:mode window\n");
 					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]+Bwid/1000*5*j);
 					viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
 					viPrintf(vip,":measure:source channel%d\n",i+1);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					vtemp=u[j];
-					while(vtemp==-1||vrange==-1)
-					{
-						if(flag>2)
-						{
-							//isok=false;
-							break;
-						}
-						flag++;
-						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					}
-					while(vtemp>9.9e+37) 
-					{
-						viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-						//isok=false;
-					}
-					//波形显示小于一格
-					//while(vtemp<vrange/8.0)
-					//{
-					//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					//	//isok=false;
-					//}
-					viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
-					angle=pturntable->ReadCurrentAngle();
+					u[j]=autoV(i+1);	
+					Result[j].push_back(u[j]);
 					MAngle[j].push_back(angle);
-					//if(isok==false)
-					//{
-					//	u[j]=0;
-					//	MAngle[j].pop_back();
-					//	j=j-1;//此通道重新测量一遍
-					//
-					//}
 				}
+				viPrintf(vip,":run\n");
 			}
 		}
-		//保存电压值
-		for(int j=0;j<PulseCount;j++)
-		{
-			Result[j].push_back(u[j]);
-		}
-		//viPrintf(vip,":timebase:mode main\n");
-		//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
 		//绘制极坐标图
 		huatu_muldir();
 		angle=pturntable->ReadCurrentAngle();
@@ -1510,7 +1467,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			pturntable->StopRotateLeft();
 			isMeasure=false;
 			break;
-		}		
+		}				
 	}
 	if(isRightDir) pturntable->StopRotateRight();
 	else pturntable->StopRotateLeft();
@@ -1518,6 +1475,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
+		viPrintf(vip,":digitize channel%d\n",i+1);
 		for(int j=0;j<PulseCount;j++)
 		{
 			//viPrintf(vip,":timebase:mode main\n");
@@ -1528,12 +1486,12 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			viPrintf(vip,":measure:source channel%d\n",i+1);
 			u[j]=autoV(i+1);
 			Result[j].push_back(u[j]);
-			angle=pturntable->ReadCurrentAngle();
 			MAngle[j].push_back(angle);
 		}
+		viPrintf(vip,":run\n");
 	}//最后一个角度的电压值
 	huatu_muldir();
-	//viPrintf(vip,":timebase:mode main\n");
+	viPrintf(vip,":timebase:mode main\n");
 	//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
 	pturntable->SetTimer(1,200,NULL);//重启回转界面的定时器
 	clock_t t_end=clock();

@@ -53,7 +53,7 @@ void CChangeSig::OnBnClickedOk()
 	Bwid=m_w;
 	Brep=m_p;
 	if(ChooseItem==4) 
-		CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,25,v/1000,Brep);
+		CreateMulFrePulse(100000,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);
 	else CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	
 	//OnCancel();
