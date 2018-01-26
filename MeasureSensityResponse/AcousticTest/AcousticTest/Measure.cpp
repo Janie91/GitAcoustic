@@ -28,7 +28,6 @@ using namespace std;
 vector<vector<float>>Result(4,vector<float>(0));
 vector<vector<float>>MulSensity(4,vector<float>(0));
 vector<float> MeaAngle;
-vector<vector<float>>MAngle(4,vector<float>(0));
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
 bool isTimer[4]={false,false,false,false};
 bool isMeasure=true;
@@ -188,8 +187,8 @@ void autoScale(int chaflag,int cha,int chacount)
 		viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
 		viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
 	}
-	//波形显示小于两格
-	while(vTemp<vRange/8.0*2)
+	//波形显示小于一格
+	while(vTemp<vRange/8.0)
 	{
 		if(vRange/2<0.016) 
 		{
@@ -225,11 +224,48 @@ void autoScale(int chaflag,int cha,int chacount)
 		break;
 	}
 }
+float autoV(int chann)
+{
+	float vrange=-1,vtemp=-1;
+	int flag=0;
+	
+	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+	
+	while(vtemp==-1||vrange==-1)
+	{
+		if(flag>2) break;
+		flag++;
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	}
+	while(vtemp>vrange/8.0*4) 
+	{
+		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	}
+	//波形显示小于一格
+	while(vtemp<vrange/8.0)
+	{
+		if(vrange/2<0.016) 
+		{
+			viPrintf(vip,":channel%d:range 0.016\n",chann);
+			viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+			viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+			break;
+		}
+		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	}
+	viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);//有效值不受尖刺波的影响
+	return vtemp;
+}
 void CMeasure::OnBnClickedView()
 {
 	// TODO: Add your control notification handler code here
 	SetDlgItemTextA(IDC_Show,"正在调整信号，请稍候......");
-	//int delay=(int)(Brep*1000);//延迟delay，单位ms
 	renew();
 	
 	//自动调整，合适的显示波形
@@ -281,7 +317,7 @@ void CMeasure::OnBnClickedView()
 			CreateMulFrePulse(Fs,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);
 			Sleep(100);
 			ScopeTrigger();
-			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*5*PulseCount);//设置时间轴代表的时间长度
+			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*6*PulseCount);//设置时间轴代表的时间长度
 		}
 		else 
 		{
@@ -503,13 +539,13 @@ void CMeasure::Onsave()
 		{
 			if(ChooseItem==4)//多频点测指向性
 			{
-				for(int j=0;j<4;j++)
+				for(int j=0;j<PulseCount;j++)
 				{
 					if(Result[j].size()==0)continue;
 					for(unsigned int k=0;k<Result[j].size();k++)
 					{
-						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+1)),
-						_variant_t(MAngle[j][k]));
+						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)1),
+						_variant_t(MeaAngle[k]));
 						//设置k+3排的第2列数据或第3列……
 						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+2)),
 						_variant_t(Result[j][k]));
@@ -607,14 +643,14 @@ void CMeasure::renew()
 {
 	f=startf;
 	isMeasure=true;
+	MeaAngle.clear();
 	for(int i=0;i<4;i++)
 	{
 		u[i]=-1.0;
-		zoomPosition[i]=-1;
-		zoomRange[i]=-1;
+		zoomPosition[i]=-1.0;
+		zoomRange[i]=-1.0;
 		Result[i].clear();
 		MulSensity[i].clear();
-		MAngle[i].clear();
 	}
 	CWnd *pWnd=GetDlgItem(IDC_picture);
 	pWnd->UpdateWindow();
@@ -782,46 +818,47 @@ int CMeasure::MeasureSensity()
 			{
 				if(isChaChoose[i])
 				{
-					float vrange,vtemp;
-					bool isok=true;
-					int flag=0;
+					//float vrange,vtemp;
+					//bool isok=true;
+					//int flag=0;
 					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 					viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 					viPrintf(vip,":measure:source channel%d\n",i+1);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					vtemp=u[i];
-					while(vtemp<-1e8||vrange<-1e8)
-					{
-						if(flag>10)
-						{
-							isok=false;
-							break;
-						}
-						flag++;
-						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					}
-					while(vtemp>vrange/8.0*4) 
-					{
-						viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-						isok=false;
-					}
-					//波形显示小于两格
-					while(vtemp<vrange/8.0)
-					{
-						viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-						viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-						viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-						isok=false;
-					}
-					if(isok==false)
-					{
-						u[i]=0;
-						i=i-1;//此通道重新测量一遍					
-					}
+					u[i]=autoV(i+1);
+					//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+					//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					//vtemp=u[i];
+					//while(vtemp<-1e8||vrange<-1e8)
+					//{
+					//	if(flag>10)
+					//	{
+					//		isok=false;
+					//		break;
+					//	}
+					//	flag++;
+					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					//}
+					//while(vtemp>vrange/8.0*4) 
+					//{
+					//	viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
+					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					//	isok=false;
+					//}
+					////波形显示小于两格
+					//while(vtemp<vrange/8.0)
+					//{
+					//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+					//	isok=false;
+					//}
+					//if(isok==false)
+					//{
+					//	u[i]=0;
+					//	i=i-1;//此通道重新测量一遍					
+					//}
 				}
 			}
 			for(int i=0;i<4;i++)
@@ -896,47 +933,48 @@ int CMeasure::MeasureResponse()
 		{
 			if(isChaChoose[i])
 			{
-				float vrange,vtemp;
-				bool isok=true;
-				int flag=0;
+				//float vrange,vtemp;
+				//bool isok=true;
+				//int flag=0;
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				vtemp=u[i];
-				while(vtemp<-1e8||vrange<-1e8)
-				{
-					if(flag>10)
-					{
-						isok=false;
-						break;
-					}
-					flag++;
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				}
-				while(vtemp>vrange/8.0*4) 
-				{
-					viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					isok=false;
-				}
-				//波形显示小于两格
-				while(vtemp<vrange/8.0*2)
-				{
-					viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					isok=false;
-				}
-				if(isok==false)
-				{
-					u[i]=0;
-					i=i-1;//此通道重新测量一遍
-					
-				}
+				u[i]=autoV(i+1);
+				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+				//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//vtemp=u[i];
+				//while(vtemp<-1e8||vrange<-1e8)
+				//{
+				//	if(flag>10)
+				//	{
+				//		isok=false;
+				//		break;
+				//	}
+				//	flag++;
+				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				//}
+				//while(vtemp>vrange/8.0*4) 
+				//{
+				//	viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
+				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				//	isok=false;
+				//}
+				////波形显示小于两格
+				//while(vtemp<vrange/8.0*2)
+				//{
+				//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				//	isok=false;
+				//}
+				//if(isok==false)
+				//{
+				//	u[i]=0;
+				//	i=i-1;//此通道重新测量一遍
+				//	
+				//}
 			}
 		}
 		for(int i=0;i<4;i++)
@@ -1120,47 +1158,48 @@ int CMeasure::MeasureDir()
 		{
 			if(isChaChoose[i])
 			{
-				float vrange,vtemp;
-				bool isok=true;
-				int flag=0;
+				//float vrange,vtemp;
+				//bool isok=true;
+				//int flag=0;
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
-				viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-				viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				vtemp=u[i];
-				while(vtemp<-1e8||vrange<-1e8)
-				{
-					if(flag>10)
-					{
-						isok=false;
-						break;
-					}
-					flag++;
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				}
-				while(vtemp>vrange/8.0*4) 
-				{
-					viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					isok=false;
-				}
-				//波形显示小于两格
-				while(vtemp<vrange/8.0*2)
-				{
-					viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-					viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					isok=false;
-				}
-				if(isok==false)
-				{
-					u[i]=0;
-					i=i-1;//此通道重新测量一遍
-					
-				}
+				u[i]=autoV(i+1);
+				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
+				//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//vtemp=u[i];
+				//while(vtemp<-1e8||vrange<-1e8)
+				//{
+				//	if(flag>10)
+				//	{
+				//		isok=false;
+				//		break;
+				//	}
+				//	flag++;
+				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				//}
+				//while(vtemp>vrange/8.0*4) 
+				//{
+				//	viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
+				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				//	isok=false;
+				//}
+				////波形显示小于两格
+				//while(vtemp<vrange/8.0*2)
+				//{
+				//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
+				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
+				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+				//	isok=false;
+				//}
+				//if(isok==false)
+				//{
+				//	u[i]=0;
+				//	i=i-1;//此通道重新测量一遍
+				//	
+				//}
 			}
 		}
 		angle=pturntable->ReadCurrentAngle();
@@ -1196,7 +1235,6 @@ int CMeasure::MeasureDir()
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 		viPrintf(vip,":measure:source channel%d\n",i+1);
 		u[i]=autoV(i+1);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
 		Result[i].push_back(u[i]);
 	}//最后一个角度的电压值
 	angle=pturntable->ReadCurrentAngle();
@@ -1402,8 +1440,9 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	stemp.Format("参数设置完成?是否开始测量？\n起始频率为 %.1fkHz\n频率点数 %d\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,PulseCount,StartAngle,EndAngle,pturntable->m_Speed);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	viPrintf(vip,":run\n");
+	viPrintf(vip,":timebase:mode window\n");
 	clock_t t_start=clock();
-	angle=pturntable->ReadCurrentAngle();
+	angle=pturntable->ReadCurrentAngle();	
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
@@ -1412,24 +1451,17 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			viPrintf(vip,":digitize channel%d\n",i+1);
 			for(int j=0;j<PulseCount;j++)
 			{
-				//viPrintf(vip,":timebase:mode main\n");
-				//viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);//将波形移动波形间隔，也就是移到下一个频率点
-				viPrintf(vip,":timebase:mode window\n");
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]+Bwid/1000*5*j);
 				//将zoom框移动一个间距
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
-				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[j]);
 				u[j]=autoV(i+1);
 				Result[j].push_back(u[j]);
-				MAngle[j].push_back(angle);//第一个点所有的角度一样
+				MeaAngle.push_back(angle);//第一个点所有的角度一样
 			}
 			viPrintf(vip,":run\n");
 		}
 	}//读取第一个角度的电压值
-	//viPrintf(vip,":timebase:mode main\n");
-	//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
-	viPrintf(vip,":timebase:mode window\n");
 	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
 	else pturntable->RotateLeft();//逆时针转动
 	angle=pturntable->ReadCurrentAngle();	
@@ -1448,7 +1480,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 					viPrintf(vip,":measure:source channel%d\n",i+1);
 					u[j]=autoV(i+1);	
 					Result[j].push_back(u[j]);
-					MAngle[j].push_back(angle);
+					MeaAngle.push_back(angle);
 				}
 				viPrintf(vip,":run\n");
 			}
@@ -1478,21 +1510,17 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		viPrintf(vip,":digitize channel%d\n",i+1);
 		for(int j=0;j<PulseCount;j++)
 		{
-			//viPrintf(vip,":timebase:mode main\n");
-			//viPrintf(vip,":timebase:position %f\n",Bwid/1000*5*j);
-			viPrintf(vip,":timebase:mode window\n");
 			viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]+Bwid/1000*5*j);
 			viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
 			viPrintf(vip,":measure:source channel%d\n",i+1);
 			u[j]=autoV(i+1);
 			Result[j].push_back(u[j]);
-			MAngle[j].push_back(angle);
+			MeaAngle.push_back(angle);
 		}
 		viPrintf(vip,":run\n");
 	}//最后一个角度的电压值
 	huatu_muldir();
 	viPrintf(vip,":timebase:mode main\n");
-	//viPrintf(vip,":timebase:position 0.0\n");//让波形回到第一个频点的位置
 	pturntable->SetTimer(1,200,NULL);//重启回转界面的定时器
 	clock_t t_end=clock();
 	stemp.Format("测量时间为 %.4f s",(double)(t_end-t_start)/CLOCKS_PER_SEC);
@@ -1599,12 +1627,12 @@ void CMeasure::huatu_muldir()
 				float max=Result[j][0];
 				for(unsigned int k=1;k<Result[j].size();k++)
 					if(max<Result[j][k]) max=Result[j][k];
-				dAngle=PI*MAngle[j][0]/180;
+				dAngle=PI*MeaAngle[0]/180;
 				pDC->MoveTo((int)(Result[j][0]/max*R*sin(dAngle)),-(int)(Result[j][0]/max*R*cos(dAngle)));
 				//将画笔移到第一个点
 				for(unsigned int k=1;k<Result[j].size();k++)
 				{
-					dAngle=PI*MAngle[j][k]/180;
+					dAngle=PI*MeaAngle[k]/180;
 					x=(int)(Result[j][k]/max*R*sin(dAngle));
 					y=-(int)(Result[j][k]/max*R*cos(dAngle));
 					pDC->LineTo(x,y);//连接两个点
@@ -1615,37 +1643,7 @@ void CMeasure::huatu_muldir()
 
 	pDC->SelectObject(pOldPen);
 }
-float autoV(int chann)
-{
-	float vrange=-1,vtemp=-1;
-	int flag=0;
-	
-	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-	viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-	
-	while(vtemp==-1||vrange==-1)
-	{
-		if(flag>2) break;
-		flag++;
-		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-	}
-	while(vtemp>vrange/8.0*4) 
-	{
-		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
-		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-	}
-	//波形显示小于一格
-	while(vtemp<vrange/8.0)
-	{
-		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
-		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-	}
-	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-	return vtemp;
-}
+
 int CMeasure::MeaHuyi()
 {
 	float UI[3]={0,0,0};
