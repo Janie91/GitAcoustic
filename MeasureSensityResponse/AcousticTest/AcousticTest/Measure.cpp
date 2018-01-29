@@ -41,6 +41,7 @@ IMPLEMENT_DYNAMIC(CMeasure, CDialogEx)
 
 CMeasure::CMeasure(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMeasure::IDD, pParent)
+	, m_Angle(_T(""))
 {
 	pturntable=NULL;
 }
@@ -52,6 +53,8 @@ CMeasure::~CMeasure()
 void CMeasure::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_MSCOM, m_com);
+	DDX_Text(pDX, IDC_Angle, m_Angle);
 }
 
 
@@ -87,6 +90,15 @@ int huatu_muldir();
 int MeaHuyi();
 void huatu_huyi();
 float autoV(int chann);
+
+void MeaSetManual();
+float MeaReadCurrentAngle();
+void MeaRotateRight(int speed);
+void MeaRotateLeft(int speed);
+void MeaRotateTargetAngle(int speed,int targetangle);
+void MeaStopRotateRight();
+void MeaStopRotateLeft();
+void MeaStopRotate();
 BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 {
 	CDialogEx::OnInitDialog();
@@ -149,9 +161,13 @@ void autoScale(int chaflag,int cha,int chacount)
 	viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);//获得纵向的电压范围
 	viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);//测量峰峰值
 			
-	while(vTemp<-1e8||vRange<-1e8||vTemp==-1||vRange==-1)
+	while(vTemp==-1||vRange==-1)
 	{
-		if(flag>10) break;
+		if(flag>2) 
+		{
+			AfxMessageBox("示波器没有信号！");
+			return;
+		}
 		flag++;
 		viQueryf(vip,":channel%d:range?\n","%f\n",cha,&vRange);
 		viQueryf(vip,":measure:vpp?\n","%f\n",&vTemp);
@@ -369,7 +385,7 @@ void CMeasure::OnBnClickedStartmea()
 		AfxMessageBox("请选择示波器的测量通道！");
 		return;
 	}
-	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
+	SetDlgItemTextA(IDC_Show,"开始测量，请稍候......");
 	int meaStatus=0;
 	switch(ChooseItem)
 	{
@@ -442,6 +458,18 @@ void CMeasure::OnBnClickedquitsys()
 	viClose(vidp);
 	viClose(vidg);
 	OnCancel();//因为它是非模态对话框，自己重载了这个函数	
+}
+void CMeasure::PostNcDestroy()
+{
+	// TODO: Add your specialized code here and/or call the base class
+	CDialog::PostNcDestroy();
+	delete pturntable;
+	delete this;
+}
+void CMeasure::OnCancel()
+{
+	// TODO: Add your specialized code here and/or call the base class
+	CWnd::DestroyWindow();
 }
 void CMeasure::Onsave()
 {
@@ -663,82 +691,6 @@ void CMeasure::renew()
 	pDC->Rectangle (rect);
 	pDC->SelectObject (pOldBrush);
 }
-void CMeasure::huatu_sensity()
-{
-	int x=0,y=0;
-	CWnd *pWnd=GetDlgItem(IDC_picture);
-	CRect rect;
-	pWnd->GetClientRect(rect);
-	CDC* pDC=pWnd->GetDC();
-	CPen* pNewPen=new CPen;
-	pNewPen->CreatePen(PS_SOLID,1,RGB(0,0,0));
-	CPen* pOldPen=pDC->SelectObject(pNewPen);
-	int deltaX=rect.Width()/50;
-	int deltaY=rect.Height()/100;//100是随机取的，代表纵轴分为100份
-	pDC->SetViewportOrg(rect.left,rect.top);//测量灵敏度时都是负值,原点设为最左上角的点
-	//画网格线
-	CString str;
-	int temp=0;
-	for(x=0;x<=50;x+=2)
-	{
-		pDC->MoveTo((int)(x*deltaX),0);
-		pDC->LineTo((int)(x*deltaX),rect.Height());
-		if(endf==startf)
-		{
-			str.Format("%d",(int)(startf+x));
-			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
-		}
-		else
-		{
-			if((int)(startf+(endf-startf)/50*x)==temp) continue;
-			temp=(int)(startf+(endf-startf)/50*x);
-			str.Format("%d",temp);
-			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
-		}
-	}
-	for(y=0;y<=100;y+=10)
-	{
-		pDC->MoveTo(rect.left,y*deltaY);
-		pDC->LineTo(rect.right,y*deltaY);
-		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
-		pDC->TextOutA(rect.left-30,y*deltaY,str);
-	}
-	pDC->SelectObject(pOldPen);
-	delete pNewPen;
-	CPen* pPen=new CPen;
-	pPen->CreatePen(PS_SOLID,2,RGB(255,0,0));
-	pOldPen=pDC->SelectObject(pPen);
-
-	////debug
-	//float Result[10]={-210.7f,-210.6f,-218.1f,-217.6f,-215.8f,-214.9f,-215.3f,-215.4f,-215.9f,-217.0f};
-	//pDC->MoveTo(0,(int)((Result[0]+150)*deltaY));
-	//for(unsigned int i=1;i<10;i++)
-	//{
-	//	x=i*deltaX;
-	//	y=(int)((Result[i]+150)*deltaY);
-	//	pDC->LineTo(x,y);//连接两个点
-	//}
-	////debug
-	for(int ch=0;ch<4;ch++)
-	{
-		if(isChaChoose[ch])
-		{
-			if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
-			pDC->MoveTo(0,-(int)((Result[ch][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
-			if(endf==startf) continue;
-			for(unsigned int i=1;i<Result[ch].size();i++)
-			{
-				x=(int)(i*deltaf*deltaX*50/(endf-startf));
-				y=-(int)((Result[ch][i]+150)*deltaY);
-				pDC->LineTo(x,y);//连接两个点
-			}
-		}
-	}
-
-	pDC->SelectObject(pOldPen);
-	delete pPen;
-
-}
 void CMeasure::Capture(vector<int> cha,int count)
 {
 	//viPrintf(vip,":acquire:type normal\n");
@@ -887,6 +839,82 @@ int CMeasure::MeasureSensity()
 
 	viPrintf(vip,":timebase:mode main\n");
 	return 0;
+}
+void CMeasure::huatu_sensity()
+{
+	int x=0,y=0;
+	CWnd *pWnd=GetDlgItem(IDC_picture);
+	CRect rect;
+	pWnd->GetClientRect(rect);
+	CDC* pDC=pWnd->GetDC();
+	CPen* pNewPen=new CPen;
+	pNewPen->CreatePen(PS_SOLID,1,RGB(0,0,0));
+	CPen* pOldPen=pDC->SelectObject(pNewPen);
+	int deltaX=rect.Width()/50;
+	int deltaY=rect.Height()/100;//100是随机取的，代表纵轴分为100份
+	pDC->SetViewportOrg(rect.left,rect.top);//测量灵敏度时都是负值,原点设为最左上角的点
+	//画网格线
+	CString str;
+	int temp=0;
+	for(x=0;x<=50;x+=2)
+	{
+		pDC->MoveTo((int)(x*deltaX),0);
+		pDC->LineTo((int)(x*deltaX),rect.Height());
+		if(endf==startf)
+		{
+			str.Format("%d",(int)(startf+x));
+			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
+		}
+		else
+		{
+			if((int)(startf+(endf-startf)/50*x)==temp) continue;
+			temp=(int)(startf+(endf-startf)/50*x);
+			str.Format("%d",temp);
+			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
+		}
+	}
+	for(y=0;y<=100;y+=10)
+	{
+		pDC->MoveTo(rect.left,y*deltaY);
+		pDC->LineTo(rect.right,y*deltaY);
+		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
+		pDC->TextOutA(rect.left-30,y*deltaY,str);
+	}
+	pDC->SelectObject(pOldPen);
+	delete pNewPen;
+	CPen* pPen=new CPen;
+	pPen->CreatePen(PS_SOLID,2,RGB(255,0,0));
+	pOldPen=pDC->SelectObject(pPen);
+
+	////debug
+	//float Result[10]={-210.7f,-210.6f,-218.1f,-217.6f,-215.8f,-214.9f,-215.3f,-215.4f,-215.9f,-217.0f};
+	//pDC->MoveTo(0,(int)((Result[0]+150)*deltaY));
+	//for(unsigned int i=1;i<10;i++)
+	//{
+	//	x=i*deltaX;
+	//	y=(int)((Result[i]+150)*deltaY);
+	//	pDC->LineTo(x,y);//连接两个点
+	//}
+	////debug
+	for(int ch=0;ch<4;ch++)
+	{
+		if(isChaChoose[ch])
+		{
+			if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
+			pDC->MoveTo(0,-(int)((Result[ch][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
+			if(endf==startf) continue;
+			for(unsigned int i=1;i<Result[ch].size();i++)
+			{
+				x=(int)(i*deltaf*deltaX*50/(endf-startf));
+				y=-(int)((Result[ch][i]+150)*deltaY);
+				pDC->LineTo(x,y);//连接两个点
+			}
+		}
+	}
+
+	pDC->SelectObject(pOldPen);
+	delete pPen;
+
 }
 int CMeasure::MeasureResponse()
 {
@@ -1077,13 +1105,29 @@ void CMeasure::huatu_response()
 }
 int CMeasure::MeasureDir()
 {
-	f=startf;
-	isMeasure=true;
-	if(pturntable==NULL) 
+	if(m_com.get_PortOpen())
 	{
-		AfxMessageBox("请先连接控制回转系统！");
+		AfxMessageBox("串口正在使用，请先关闭控制回转系统！");
+		m_com.put_PortOpen(false);
 		return -1;
 	}
+	if(!m_com.get_PortOpen())
+	{
+		m_com.put_PortOpen(true);         //打开串口
+	}
+	else
+	{
+		m_com.put_OutBufferCount(0);
+		MessageBox("串口2打开失败");
+		m_com.put_PortOpen(false);
+		return -1;
+	}
+	MeaSetManual();//设为手动
+	CString stemp;
+	stemp.Format("参数设置完成?是否开始测量？\n当前频率为 %.1f\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,StartAngle,EndAngle,Speed);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	f=startf;
+	isMeasure=true;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
@@ -1100,28 +1144,27 @@ int CMeasure::MeasureDir()
 	}
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
-	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
-	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
+	float angle=MeaReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
+	SetDlgItemTextA(IDC_Show,"正在转到指定角度，请稍候......");
 	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
 	{
-		pturntable->RotateTargetAngle(StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
+		MeaRotateTargetAngle(Speed,StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
 		isRightDir=true;
 	}
 	else 
 	{
-		pturntable->RotateTargetAngle(EndAngle);
+		MeaRotateTargetAngle(Speed,EndAngle);
 		isRightDir=false;
 	}
-	angle=pturntable->ReadCurrentAngle();
+	angle=MeaReadCurrentAngle();
 	while((isRightDir&&abs(angle-StartAngle)>0.1)||(!isRightDir&&abs(angle-EndAngle)>0.1))//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
 	{
-		angle=pturntable->ReadCurrentAngle();
+		angle=MeaReadCurrentAngle();
 	}//等待转到指定角度完成
-	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n当前频率为 %.1f\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,StartAngle,EndAngle,pturntable->m_Speed);
-	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+
 	viPrintf(vip,":run\n");
+	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
 	clock_t t_start=clock();
 	viPrintf(vip,":timebase:mode window\n");
 	
@@ -1135,11 +1178,11 @@ int CMeasure::MeasureDir()
 		//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
 		Result[i].push_back(u[i]);
 	}//读取第一个角度的电压值
-	angle=pturntable->ReadCurrentAngle();
+	angle=MeaReadCurrentAngle();
 	MeaAngle.push_back(angle);
-	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
-	else pturntable->RotateLeft();//逆时针转动
-	angle=pturntable->ReadCurrentAngle();	
+	if(isRightDir) MeaRotateRight(Speed);//顺时针转动起来
+	else MeaRotateLeft(Speed);//逆时针转动
+	angle=MeaReadCurrentAngle();	
 	while((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle))
 	{
 		//用来接收“停止测量”按钮按下的消息
@@ -1165,44 +1208,9 @@ int CMeasure::MeasureDir()
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
 				u[i]=autoV(i+1);
-				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-				//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//vtemp=u[i];
-				//while(vtemp<-1e8||vrange<-1e8)
-				//{
-				//	if(flag>10)
-				//	{
-				//		isok=false;
-				//		break;
-				//	}
-				//	flag++;
-				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				//}
-				//while(vtemp>vrange/8.0*4) 
-				//{
-				//	viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				//	isok=false;
-				//}
-				////波形显示小于两格
-				//while(vtemp<vrange/8.0*2)
-				//{
-				//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				//	isok=false;
-				//}
-				//if(isok==false)
-				//{
-				//	u[i]=0;
-				//	i=i-1;//此通道重新测量一遍
-				//	
-				//}
 			}
 		}
-		angle=pturntable->ReadCurrentAngle();
+		angle=MeaReadCurrentAngle();
 		MeaAngle.push_back(angle);
 		//保存角度和电压值
 		for(int i=0;i<4;i++)
@@ -1213,20 +1221,20 @@ int CMeasure::MeasureDir()
 		
 		//绘制极坐标图
 		huatu_recidir();
-		angle=pturntable->ReadCurrentAngle();
+		angle=MeaReadCurrentAngle();
 		if(isRightDir&&angle>=EndAngle)
 		{
-			pturntable->StopRotateRight();
+			MeaStopRotateRight();
 			break;
 		}
 		else if(!isRightDir&&angle<=StartAngle)
 		{
-			pturntable->StopRotateLeft();
+			MeaStopRotateLeft();
 			break;
 		}		
 	}
-	if(isRightDir) pturntable->StopRotateRight();
-	else pturntable->StopRotateLeft();
+	if(isRightDir) MeaStopRotateRight();
+	else MeaStopRotateLeft();
 	
 	for(int i=0;i<4;i++)
 	{
@@ -1237,14 +1245,15 @@ int CMeasure::MeasureDir()
 		u[i]=autoV(i+1);
 		Result[i].push_back(u[i]);
 	}//最后一个角度的电压值
-	angle=pturntable->ReadCurrentAngle();
+	angle=MeaReadCurrentAngle();
 	MeaAngle.push_back(angle);
 	huatu_recidir();
 	viPrintf(vip,":timebase:mode main\n");
-	pturntable->SetTimer(1,200,NULL);
 	clock_t t_end=clock();
 	stemp.Format("测量时间为 %.4f s",(double)(t_end-t_start)/CLOCKS_PER_SEC);
 	MessageBox(stemp);
+	if(m_com.get_PortOpen())
+		m_com.put_PortOpen(false);
 	return 0;
 }
 void CMeasure::huatu_recidir()
@@ -1376,30 +1385,28 @@ void CMeasure::huatu_recidir()
 
 	pDC->SelectObject(pOldPen);
 }
-
-void CMeasure::PostNcDestroy()
-{
-	// TODO: Add your specialized code here and/or call the base class
-	CDialog::PostNcDestroy();
-	delete pturntable;
-	delete this;
-}
-
-
-void CMeasure::OnCancel()
-{
-	// TODO: Add your specialized code here and/or call the base class
-	CWnd::DestroyWindow();
-}
 int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 {
-	f=startf;
-	isMeasure=true;
-	if(pturntable==NULL) 
+	if(m_com.get_PortOpen())
 	{
-		AfxMessageBox("请先连接控制回转系统！");
+		AfxMessageBox("串口正在使用，请先关闭控制回转系统！");
+		m_com.put_PortOpen(false);
 		return -1;
 	}
+	if(!m_com.get_PortOpen())
+	{
+		m_com.put_PortOpen(true);         //打开串口
+	}
+	else
+	{
+		m_com.put_OutBufferCount(0);
+		MessageBox("串口2打开失败");
+		m_com.put_PortOpen(false);
+		return -1;
+	}
+	MeaSetManual();//设为手动
+	f=startf;
+	isMeasure=true;
 	CreateMulFrePulse(Fs,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);//多频点信号
 	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
@@ -1416,33 +1423,32 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		}
 	}
 	viPrintf(vip,":timebase:mode main\n");
-	pturntable->KillTimer(1);//关闭定时器，避免串口通信冲突。
-	float angle=pturntable->ReadCurrentAngle();//读出当前的角度值
+	float angle=MeaReadCurrentAngle();//读出当前的角度值
 	bool isRightDir=true;
 	
 	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
 	{
-		pturntable->RotateTargetAngle(StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
+		MeaRotateTargetAngle(Speed,StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
 		isRightDir=true;
 	}
 	else 
 	{
-		pturntable->RotateTargetAngle(EndAngle);
+		MeaRotateTargetAngle(Speed,EndAngle);
 		isRightDir=false;
 	}
-	angle=pturntable->ReadCurrentAngle();
+	angle=MeaReadCurrentAngle();
 	while((isRightDir&&abs(angle-StartAngle)>0.1)||(!isRightDir&&abs(angle-EndAngle)>0.1))//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
 	{
-		angle=pturntable->ReadCurrentAngle();
+		angle=MeaReadCurrentAngle();
 	}//等待转到指定角度完成
 	
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n起始频率为 %.1fkHz\n频率点数 %d\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,PulseCount,StartAngle,EndAngle,pturntable->m_Speed);
+	stemp.Format("参数设置完成?是否开始测量？\n起始频率为 %.1fkHz\n频率点数 %d\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,PulseCount,StartAngle,EndAngle,Speed);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	viPrintf(vip,":run\n");
 	viPrintf(vip,":timebase:mode window\n");
 	clock_t t_start=clock();
-	angle=pturntable->ReadCurrentAngle();	
+	angle=MeaReadCurrentAngle();	
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
@@ -1462,9 +1468,9 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			viPrintf(vip,":run\n");
 		}
 	}//读取第一个角度的电压值
-	if(isRightDir) pturntable->RotateRight();//顺时针转动起来
-	else pturntable->RotateLeft();//逆时针转动
-	angle=pturntable->ReadCurrentAngle();	
+	if(isRightDir) MeaRotateRight(Speed);//顺时针转动起来
+	else MeaRotateLeft(Speed);//逆时针转动
+	angle=MeaReadCurrentAngle();	
 	while(isMeasure&&((isRightDir&&angle<EndAngle)||(!isRightDir&&angle>StartAngle)))
 	{
 		for(int i=0;i<4;i++)
@@ -1472,7 +1478,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 			if(isChaChoose[i])
 			{
 				viPrintf(vip,":digitize channel%d\n",i+1);
-				angle=pturntable->ReadCurrentAngle();//读角度的时间
+				angle=MeaReadCurrentAngle();//读角度的时间
 				for(int j=0;j<PulseCount;j++)
 				{
 					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]+Bwid/1000*5*j);
@@ -1487,23 +1493,23 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		}
 		//绘制极坐标图
 		huatu_muldir();
-		angle=pturntable->ReadCurrentAngle();
+		angle=MeaReadCurrentAngle();
 		if(isRightDir&&angle>=EndAngle)
 		{
-			pturntable->StopRotateRight();
+			MeaStopRotateRight();
 			isMeasure=false;
 			break;
 		}
 		else if(!isRightDir&&angle<=StartAngle)
 		{
-			pturntable->StopRotateLeft();
+			MeaStopRotateLeft();
 			isMeasure=false;
 			break;
 		}				
 	}
-	if(isRightDir) pturntable->StopRotateRight();
-	else pturntable->StopRotateLeft();
-	angle=pturntable->ReadCurrentAngle();
+	if(isRightDir) MeaStopRotateRight();
+	else MeaStopRotateLeft();
+	angle=MeaReadCurrentAngle();
 	for(int i=0;i<4;i++)
 	{
 		if(!isChaChoose[i]) continue;
@@ -1521,10 +1527,11 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	}//最后一个角度的电压值
 	huatu_muldir();
 	viPrintf(vip,":timebase:mode main\n");
-	pturntable->SetTimer(1,200,NULL);//重启回转界面的定时器
 	clock_t t_end=clock();
 	stemp.Format("测量时间为 %.4f s",(double)(t_end-t_start)/CLOCKS_PER_SEC);
 	MessageBox(stemp);
+	if(m_com.get_PortOpen())
+		m_com.put_PortOpen(false);
 	return 0;
 }
 void CMeasure::huatu_muldir()
@@ -1811,4 +1818,577 @@ void CMeasure::huatu_huyi()
 
 	}
 	pDC->SelectObject(pOldPen);
+}
+void CMeasure::MeaSetManual()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	databuf.SetSize(19);	
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,82);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,49);
+	databuf.SetAt(14,48);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;//因为串口返回的是字符串类型的，retVal的vt是VT_BSTR
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("设置手动模式操作出错!");
+	}
+}
+float CMeasure::MeaReadCurrentAngle()
+{
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	databuf.SetSize(17);	
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,82);
+	databuf.SetAt(4,68);
+	databuf.SetAt(5,48);
+	databuf.SetAt(6,50);
+	databuf.SetAt(7,55);
+	databuf.SetAt(8,54);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,48);
+	databuf.SetAt(12,50);
+	commanddata=databuf[0];
+	for(int i=1;i<=12;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(13,crc[0]);
+	databuf.SetAt(14,crc[1]);
+	databuf.SetAt(15,42);
+	databuf.SetAt(16,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	//angle为接收回来的第8位开始的4位
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;//因为串口返回的是字符串类型的，retVal的vt是VT_BSTR
+	//if(str.Mid(5,2)!="00")
+	//{
+	//	AfxMessageBox("读取角度操作出错!");
+	//}
+	int temp;
+	CString anglestring;
+	anglestring.Append(str.Mid(7,1));
+	anglestring.Append(str.Mid(7,1));
+	anglestring.Append(str.Mid(7,1));
+	anglestring.Append(str.Mid(7,1));
+	anglestring+=str.Mid(7,4);
+	sscanf_s(anglestring,"%X",&temp);
+	//是字符串，要化为数值，然后除以10才是角度
+	float angle=temp/10.0f;
+	m_Angle.Format("%.1f°",angle);
+	SetDlgItemText(IDC_Angle,m_Angle);
+	Sleep(200);
+	return angle;
+
+}
+void CMeasure::MeaRotateRight(int speed)
+{
+	//先设置速度
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	char strspeed[9];
+	databuf.SetSize(21);//设速度为speed
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,87);
+	databuf.SetAt(4,68);
+	databuf.SetAt(5,48);
+	databuf.SetAt(6,50);
+	databuf.SetAt(7,49);
+	databuf.SetAt(8,48);
+	sprintf_s(strspeed,"%08X",speed);//左边补零，共有八位
+	databuf.SetAt(9,strspeed[4]);//回转命令数据是先低后高
+	databuf.SetAt(10,strspeed[5]);
+	databuf.SetAt(11,strspeed[6]);
+	databuf.SetAt(12,strspeed[7]);
+	databuf.SetAt(13,strspeed[0]);
+	databuf.SetAt(14,strspeed[1]);
+	databuf.SetAt(15,strspeed[2]);
+	databuf.SetAt(16,strspeed[3]);	
+	commanddata=databuf[0];
+	for(int i=1;i<=16;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(17,crc[0]);
+	databuf.SetAt(18,crc[1]);
+	databuf.SetAt(19,42);
+	databuf.SetAt(20,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("设置速度操作出错!");
+	}
+	//顺时针转动
+	databuf.SetSize(19);
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,83);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,55);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	retVal=m_com.get_Input();
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("顺时针转动操作出错!");
+	}
+}
+void CMeasure::MeaRotateLeft(int speed)
+{
+	//先设置速度
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	char strspeed[9];
+	databuf.SetSize(21);//设速度为speed
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,87);
+	databuf.SetAt(4,68);
+	databuf.SetAt(5,48);
+	databuf.SetAt(6,50);
+	databuf.SetAt(7,49);
+	databuf.SetAt(8,48);
+	sprintf_s(strspeed,"%08X",speed);//左边补零，共有八位
+	databuf.SetAt(9,strspeed[4]);//回转命令数据是先低后高
+	databuf.SetAt(10,strspeed[5]);
+	databuf.SetAt(11,strspeed[6]);
+	databuf.SetAt(12,strspeed[7]);
+	databuf.SetAt(13,strspeed[0]);
+	databuf.SetAt(14,strspeed[1]);
+	databuf.SetAt(15,strspeed[2]);
+	databuf.SetAt(16,strspeed[3]);	
+	commanddata=databuf[0];
+	for(int i=1;i<=16;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(17,crc[0]);
+	databuf.SetAt(18,crc[1]);
+	databuf.SetAt(19,42);
+	databuf.SetAt(20,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("设置速度操作出错!");
+	}
+	//逆时针转
+	databuf.SetSize(19);
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,83);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,56);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	retVal=m_com.get_Input();
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("逆时针转动操作出错!");
+	}
+}
+void CMeasure::MeaRotateTargetAngle(int speed,int targetangle)
+{
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	//设为自动
+	databuf.SetSize(19);
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,83);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,49);
+	databuf.SetAt(14,48);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("设为自动操作出错!");
+	}
+	//停止转动
+	databuf.SetSize(19);
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,82);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,57);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	retVal=m_com.get_Input();
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("停止转动操作出错!");
+	}
+	//先设置速度
+	char strspeed[9];
+	databuf.SetSize(21);//设速度为speed
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,87);
+	databuf.SetAt(4,68);
+	databuf.SetAt(5,48);
+	databuf.SetAt(6,50);
+	databuf.SetAt(7,49);
+	databuf.SetAt(8,48);
+	sprintf_s(strspeed,"%08X",speed);//左边补零，共有八位
+	databuf.SetAt(9,strspeed[4]);//回转命令数据是先低后高
+	databuf.SetAt(10,strspeed[5]);
+	databuf.SetAt(11,strspeed[6]);
+	databuf.SetAt(12,strspeed[7]);
+	databuf.SetAt(13,strspeed[0]);
+	databuf.SetAt(14,strspeed[1]);
+	databuf.SetAt(15,strspeed[2]);
+	databuf.SetAt(16,strspeed[3]);	
+	commanddata=databuf[0];
+	for(int i=1;i<=16;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(17,crc[0]);
+	databuf.SetAt(18,crc[1]);
+	databuf.SetAt(19,42);
+	databuf.SetAt(20,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	retVal=m_com.get_Input();
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("设置速度操作出错!");
+	}
+	//设置目标角度
+	char strangle[9];
+	databuf.SetSize(21);
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,87);
+	databuf.SetAt(4,68);
+	databuf.SetAt(5,48);
+	databuf.SetAt(6,50);
+	databuf.SetAt(7,55);
+	databuf.SetAt(8,52);
+	sprintf_s(strangle,"%08X",targetangle*10);//转换角度时有个10倍关系
+	databuf.SetAt(9,strangle[4]);
+	databuf.SetAt(10,strangle[5]);
+	databuf.SetAt(11,strangle[6]);
+	databuf.SetAt(12,strangle[7]);
+	databuf.SetAt(13,strangle[0]);
+	databuf.SetAt(14,strangle[1]);
+	databuf.SetAt(15,strangle[2]);
+	databuf.SetAt(16,strangle[3]);
+	commanddata=databuf[0];
+	for(int i=1;i<=16;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(17,crc[0]);
+	databuf.SetAt(18,crc[1]);
+	databuf.SetAt(19,42);
+	databuf.SetAt(20,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	retVal=m_com.get_Input();
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("设置目标角度操作出错!");
+	}
+	//定位启动
+	databuf.SetSize(19);
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,83);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,57);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	retVal=m_com.get_Input();
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("定位启动操作出错!");
+	}
+
+}
+void CMeasure::MeaStopRotate()
+{
+    BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	databuf.SetSize(19);//停止转动
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,82);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,57);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("停止转动操作出错!");
+	}
+}
+void CMeasure::MeaStopRotateRight()
+{
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	databuf.SetSize(19);//顺时针停
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,82);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,55);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("顺时针停操作出错!");
+	}
+}
+void CMeasure::MeaStopRotateLeft()
+{
+	BYTE commanddata;
+	CByteArray databuf;
+	char crc[3];
+	databuf.SetSize(19);//逆时针停
+	databuf.SetAt(0,64);
+	databuf.SetAt(1,48);
+	databuf.SetAt(2,49);
+	databuf.SetAt(3,75);
+	databuf.SetAt(4,82);
+	databuf.SetAt(5,67);
+	databuf.SetAt(6,73);
+	databuf.SetAt(7,79);
+	databuf.SetAt(8,32);
+	databuf.SetAt(9,48);
+	databuf.SetAt(10,48);
+	databuf.SetAt(11,53);
+	databuf.SetAt(12,48);
+	databuf.SetAt(13,48);
+	databuf.SetAt(14,56);
+	commanddata=databuf[0];
+	for(int i=1;i<=14;i++)
+	{
+		commanddata^=databuf[i];
+	}
+	sprintf_s(crc,"%02X",commanddata);
+	databuf.SetAt(15,crc[0]);
+	databuf.SetAt(16,crc[1]);
+	databuf.SetAt(17,42);
+	databuf.SetAt(18,13);
+	m_com.put_Output(COleVariant(databuf));
+	Sleep(200);
+	VARIANT retVal=m_com.get_Input();
+	CString str;
+	str=retVal.bstrVal;
+	if(str.Mid(5,2)!="00")
+	{
+		AfxMessageBox("逆时针停操作出错!");
+	}
 }

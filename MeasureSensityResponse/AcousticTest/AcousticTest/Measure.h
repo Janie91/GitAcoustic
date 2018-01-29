@@ -1,6 +1,7 @@
 #pragma once
 #include "TurnTable.h"
 #include <vector>
+#include "mscomm.h"
 using namespace std;
 // CMeasure dialog
 
@@ -53,4 +54,17 @@ private:
 
 public:
 	afx_msg void OnBnClickedChangesignal();
+	CMscomm m_com;
+	CString m_CurrentAngle;
+	void MeaSetManual();
+	float MeaReadCurrentAngle();
+	
+
+	void MeaRotateRight(int speed);
+	void MeaRotateLeft(int speed);
+	void MeaRotateTargetAngle(int speed,int targetangle);
+	void MeaStopRotateRight();
+	void MeaStopRotateLeft();
+	void MeaStopRotate();
+	CString m_Angle;
 };

@@ -20,7 +20,7 @@ extern float u[4];
 extern map<float,float> standMp;
 extern CString strDirFile;
 extern int Ratio,Gain[4],MeaCount;
-extern int StartAngle,EndAngle;
+extern int Speed,StartAngle,EndAngle;
 extern bool isChange;
 extern int PulseCount;
 

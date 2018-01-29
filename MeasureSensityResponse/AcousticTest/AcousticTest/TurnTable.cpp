@@ -823,8 +823,16 @@ void CTurnTable::OnTimer(UINT_PTR nIDEvent)
 void CTurnTable::OnBnClickedquit()
 {
 	// TODO: Add your control notification handler code here
+	Speed=GetDlgItemInt(IDC_Speed);
 	StartAngle=GetDlgItemInt(IDC_StartAngle);
 	EndAngle=GetDlgItemInt(IDC_EndAngle);
+	clock_t start=clock();
+	ReadCurrentAngle();
+	clock_t end=clock();
+	CString stemp;
+	stemp.Format("测量时间为 %.4f s",(double)(end-start)/CLOCKS_PER_SEC);
+	MessageBox(stemp);
+
 }
 
 void CTurnTable::OnPaint()//在turntable的重绘函数中添加了显示角度的函数，不知道测量的时候能不能一直看到变化
