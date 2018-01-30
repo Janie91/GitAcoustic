@@ -46,6 +46,7 @@ public:
 	void huatu_muldir();
 	int MeaHuyi();
 	void huatu_huyi();
+	void huatu_dB();
 	
 private:
 	CTurnTable *pturntable;
@@ -67,4 +68,5 @@ public:
 	void MeaStopRotateLeft();
 	void MeaStopRotate();
 	CString m_Angle;
+	int m_DirPic;
 };

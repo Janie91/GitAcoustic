@@ -17,7 +17,7 @@ CTurnTable::CTurnTable(CWnd* pParent /*=NULL*/)
 {
 
 	m_CurrentAngle = _T("");
-	m_Speed = 120;
+	m_Speed = Speed;
 	m_TargetAngle=0;
 	m_StartAngle=StartAngle;
 	m_EndAngle=EndAngle;

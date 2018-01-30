@@ -42,6 +42,7 @@ IMPLEMENT_DYNAMIC(CMeasure, CDialogEx)
 CMeasure::CMeasure(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMeasure::IDD, pParent)
 	, m_Angle(_T(""))
+	, m_DirPic(0)
 {
 	pturntable=NULL;
 }
@@ -55,6 +56,7 @@ void CMeasure::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_MSCOM, m_com);
 	DDX_Text(pDX, IDC_Angle, m_Angle);
+	DDX_Radio(pDX, IDC_dirPic, m_DirPic);
 }
 
 
@@ -653,6 +655,7 @@ void CMeasure::Onsave()
 void CMeasure::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: Add your message handler code here and/or call default
+	UpdateData(true);
 	switch(nIDEvent)
 	{
 	case 1:
@@ -660,7 +663,9 @@ void CMeasure::OnTimer(UINT_PTR nIDEvent)
 	case 2:
 		huatu_response();isTimer[1]=true;break;
 	case 3:
-		huatu_recidir();isTimer[2]=true;break;
+		if(m_DirPic==0)huatu_recidir();
+		else huatu_dB();
+		isTimer[2]=true;break;
 	case 4:
 		huatu_muldir();isTimer[3]=true;break;
 	}
@@ -1124,8 +1129,13 @@ int CMeasure::MeasureDir()
 	}
 	MeaSetManual();//设为手动
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n当前频率为 %.1f\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,StartAngle,EndAngle,Speed);
-	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	stemp.Format("参数设置完成?是否开始测量？\n当前频率为 %.1fkHz\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,StartAngle,EndAngle,Speed);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) 
+	{
+		m_com.put_OutBufferCount(0);
+		m_com.put_PortOpen(false);
+		return -1;
+	}
 	f=startf;
 	isMeasure=true;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
@@ -1201,9 +1211,6 @@ int CMeasure::MeasureDir()
 		{
 			if(isChaChoose[i])
 			{
-				//float vrange,vtemp;
-				//bool isok=true;
-				//int flag=0;
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
@@ -1275,12 +1282,12 @@ void CMeasure::huatu_recidir()
 	int w=rect.Width(),h=rect.Height ();
 	pDC->SetViewportOrg(w/2,h/2);//设置原点
 	int R=(h-60)/2;//半径
-	int deltaR=R/cycle_num;
+	float deltaR=(float)R/cycle_num;
 	for(int i=1;i<=cycle_num;i++)
 	{
-		pDC->Ellipse(-i*deltaR,-i*deltaR,i*deltaR,i*deltaR);//画圆，其实是找到一个外切正方形的左上角顶点和右下角顶点
+		pDC->Ellipse(-(int)(i*deltaR),-(int)(i*deltaR),(int)(i*deltaR),(int)(i*deltaR));//画圆，其实是找到一个外切正方形的左上角顶点和右下角顶点
 	}
-	pDC->Ellipse(-cycle_num*deltaR,-cycle_num*deltaR,cycle_num*deltaR,cycle_num*deltaR);//最外面的圆
+	pDC->Ellipse(-(int)(cycle_num*deltaR),-(int)(cycle_num*deltaR),(int)(cycle_num*deltaR),(int)(cycle_num*deltaR));//最外面的圆
 	float deltaA=2*PI/redius_num;
 	int x,y;
 	for(int i=0;i<=redius_num/2;i++)
@@ -1294,6 +1301,11 @@ void CMeasure::huatu_recidir()
 		y=(int)(R*cos(-i*deltaA));
 		pDC->LineTo(x,y);//画了二三象限的半径
 	}
+	CPen p;
+	p.CreatePen(PS_SOLID, 1, RGB(255,0,0));
+	pOldPen=pDC->SelectObject(&p);
+	pDC->Ellipse(-(int)((cycle_num-3)*deltaR),-(int)((cycle_num-3)*deltaR),
+		(int)((cycle_num-3)*deltaR),(int)((cycle_num-3)*deltaR));//3dB的圆
 	CString str;
 	str.Format("%d°",0);
 	pDC->TextOutA(0,-R-20,str);
@@ -1385,6 +1397,135 @@ void CMeasure::huatu_recidir()
 
 	pDC->SelectObject(pOldPen);
 }
+void CMeasure::huatu_dB()
+{
+	int cycle_num=10,redius_num=36;//cycle_num是同心圆的个数，redius_num是直径的条数
+	float mindB=-45.0f,perdb=-mindB/(cycle_num-1);
+	CWnd *pWnd = GetDlgItem(IDC_picture);
+	CRect rect;
+	pWnd->GetClientRect(rect);
+	CDC *pDC = pWnd->GetDC();
+	CBrush rebrush;
+	rebrush.CreateSolidBrush (RGB(255,255,255));//白色刷子
+	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
+	pDC->Rectangle (rect);//清空picture中的绘画
+	pDC->SelectObject (pOldBrush);
+	CPen newPen;
+	newPen.CreatePen(PS_SOLID, 1, RGB(0,0,0));
+	CPen* pOldPen = (CPen*)pDC->SelectObject(&newPen);
+	pDC->SelectStockObject(NULL_BRUSH);//没有画刷就避免圆被覆盖，画的空心圆
+	int w=rect.Width(),h=rect.Height ();
+	pDC->SetViewportOrg(w/2,h/2);//设置原点
+	int R=(h-60)/2;//半径
+	float deltaR=(float)R/cycle_num;
+	for(int i=1;i<=cycle_num;i++)
+	{
+		pDC->Ellipse(-(int)(i*deltaR),-(int)(i*deltaR),(int)(i*deltaR),(int)(i*deltaR));//画圆，其实是找到一个外切正方形的左上角顶点和右下角顶点
+	}
+	pDC->Ellipse(-(int)(cycle_num*deltaR),-(int)(cycle_num*deltaR),(int)(cycle_num*deltaR),(int)(cycle_num*deltaR));//最外面的圆
+	float deltaA=2*PI/redius_num;
+	int x,y;
+	for(int i=0;i<=redius_num/2;i++)
+	{
+		pDC->MoveTo((int)(deltaR*sin(i*deltaA)),(int)(deltaR*cos(i*deltaA)));
+		x=(int)(R*sin(i*deltaA));
+		y=(int)(R*cos(i*deltaA));
+		pDC->LineTo(x,y);//画了一、四象限的半径
+		pDC->MoveTo((int)(deltaR*sin(-i*deltaA)),(int)(deltaR*cos(-i*deltaA)));
+		x=(int)(R*sin(-i*deltaA));
+		y=(int)(R*cos(-i*deltaA));
+		pDC->LineTo(x,y);//画了二三象限的半径
+	}
+	CPen p;
+	p.CreatePen(PS_DASH, 1, RGB(255,0,0));
+	pOldPen=pDC->SelectObject(&p);
+	pDC->Ellipse(-(int)(((-3-mindB)/perdb+1)*deltaR),-(int)(((-3-mindB)/perdb+1)*deltaR),
+		(int)(((-3-mindB)/perdb+1)*deltaR),(int)(((-3-mindB)/perdb+1)*deltaR));//-3dB的圆
+	CString str;
+	str.Format("%d°",0);
+	pDC->TextOutA(0,-R-20,str);
+	str.Format("%d°",30);
+	x=(int)(R*sin(PI/6));
+	y=-(int)(R*cos(PI/6));
+	pDC->TextOutA(x+10,y-20,str);
+	str.Format("%d°",60);
+	x=(int)(R*sin(PI/3));
+	y=-(int)(R*cos(PI/3));
+	pDC->TextOutA(x+10,y-20,str);
+	str.Format("%d°",90);
+	pDC->TextOutA(R+10,0,str);
+	str.Format("%d°",120);
+	x=(int)(R*sin(2*PI/3));
+	y=-(int)(R*cos(2*PI/3));
+	pDC->TextOutA(x+10,y+20,str);
+	str.Format("%d°",150);
+	x=(int)(R*sin(5*PI/6));
+	y=-(int)(R*cos(5*PI/6));
+	pDC->TextOutA(x+10,y+20,str);
+	str.Format("%d°",-30);
+	x=(int)(R*sin(-PI/6));
+	y=-(int)(R*cos(-PI/6));
+	pDC->TextOutA(x-30,y-20,str);
+	str.Format("%d°",-60);
+	x=(int)(R*sin(-PI/3));
+	y=-(int)(R*cos(-PI/3));
+	pDC->TextOutA(x-30,y-20,str);
+	str.Format("%d°",-90);
+	pDC->TextOutA(-R-35,0,str);
+	str.Format("%d°",-120);
+	x=(int)(R*sin(-2*PI/3));
+	y=-(int)(R*cos(-2*PI/3));
+	pDC->TextOutA(x-30,y+20,str);
+	str.Format("%d°",-150);
+	x=(int)(R*sin(-5*PI/6));
+	y=-(int)(R*cos(-5*PI/6));
+	pDC->TextOutA(x-30,y+20,str);
+	str.Format("-180°(180°)");
+	pDC->TextOutA(-20,R+10,str);
+	CPen pPen[4];
+	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	
+	for(int ch=0;ch<4;ch++)
+	{
+		if(isChaChoose[ch])
+		{
+			pOldPen=pDC->SelectObject(&pPen[ch]);
+			if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
+			
+			float max=Result[ch][0];
+			for(unsigned int i=1;i<Result[ch].size();i++)
+				if(max<Result[ch][i]) max=Result[ch][i];
+			deltaA=PI*MeaAngle[0]/180;
+			float db=20*log(Result[ch][0]/max);
+			if(db<=mindB)//分贝数最小为-30dB（0.0056），更小的就不计算了
+				pDC->MoveTo((int)(deltaR*sin(deltaA)),-(int)(deltaR*cos(deltaA)));//将画笔移到圆心
+			else
+				pDC->MoveTo((int)(((db-mindB)/perdb+1)*deltaR*sin(deltaA)),-(int)(((db-mindB)/perdb+1)*deltaR*cos(deltaA)));//将画笔移到圆心
+			for(unsigned int i=1;i<Result[ch].size();i++)
+			{
+				deltaA=PI*MeaAngle[i]/180;
+				db=20*log(Result[ch][i]/max);
+				if(db<mindB)
+				{
+					x=(int)(deltaR*sin(deltaA));
+					y=-(int)(deltaR*cos(deltaA));
+				}
+				else
+				{
+					x=(int)(((db-mindB)/perdb+1)*deltaR*sin(deltaA));
+					y=-(int)(((db-mindB)/perdb+1)*deltaR*cos(deltaA));
+				}
+				pDC->LineTo(x,y);//连接两个点
+			}
+		}
+	}
+
+	pDC->SelectObject(pOldPen);
+
+}
 int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 {
 	if(m_com.get_PortOpen())
@@ -1444,7 +1585,12 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	
 	CString stemp;
 	stemp.Format("参数设置完成?是否开始测量？\n起始频率为 %.1fkHz\n频率点数 %d\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,PulseCount,StartAngle,EndAngle,Speed);
-	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) 
+	{
+		m_com.put_OutBufferCount(0);
+		m_com.put_PortOpen(false);
+		return -1;
+	}
 	viPrintf(vip,":run\n");
 	viPrintf(vip,":timebase:mode window\n");
 	clock_t t_start=clock();
@@ -1896,10 +2042,6 @@ float CMeasure::MeaReadCurrentAngle()
 	VARIANT retVal=m_com.get_Input();
 	CString str;
 	str=retVal.bstrVal;//因为串口返回的是字符串类型的，retVal的vt是VT_BSTR
-	//if(str.Mid(5,2)!="00")
-	//{
-	//	AfxMessageBox("读取角度操作出错!");
-	//}
 	int temp;
 	CString anglestring;
 	anglestring.Append(str.Mid(7,1));
@@ -1909,12 +2051,7 @@ float CMeasure::MeaReadCurrentAngle()
 	anglestring+=str.Mid(7,4);
 	sscanf_s(anglestring,"%X",&temp);
 	//是字符串，要化为数值，然后除以10才是角度
-	float angle=temp/10.0f;
-	m_Angle.Format("%.1f°",angle);
-	SetDlgItemText(IDC_Angle,m_Angle);
-	Sleep(200);
-	return angle;
-
+	return temp/10.0f;
 }
 void CMeasure::MeaRotateRight(int speed)
 {
