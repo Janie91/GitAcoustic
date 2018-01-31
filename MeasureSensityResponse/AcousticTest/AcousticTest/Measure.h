@@ -56,7 +56,7 @@ private:
 public:
 	afx_msg void OnBnClickedChangesignal();
 	CMscomm m_com;
-	CString m_CurrentAngle;
+//	CString m_CurrentAngle;
 	void MeaSetManual();
 	float MeaReadCurrentAngle();
 	
@@ -67,6 +67,9 @@ public:
 	void MeaStopRotateRight();
 	void MeaStopRotateLeft();
 	void MeaStopRotate();
-	CString m_Angle;
+//	CString m_Angle;
 	int m_DirPic;
+	afx_msg void OnBnClickeddirp();
+	CString m_nowAngle;
+	CString m_nowangle;
 };

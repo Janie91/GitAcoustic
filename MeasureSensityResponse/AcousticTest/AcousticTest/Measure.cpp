@@ -41,7 +41,6 @@ IMPLEMENT_DYNAMIC(CMeasure, CDialogEx)
 
 CMeasure::CMeasure(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMeasure::IDD, pParent)
-	, m_Angle(_T(""))
 	, m_DirPic(0)
 {
 	pturntable=NULL;
@@ -55,7 +54,7 @@ void CMeasure::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_MSCOM, m_com);
-	DDX_Text(pDX, IDC_Angle, m_Angle);
+	//  DDX_Text(pDX, IDC_Angle, m_Angle);
 	DDX_Radio(pDX, IDC_dirPic, m_DirPic);
 }
 
@@ -118,19 +117,15 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 	 }
 	 if(ChooseItem==2||ChooseItem==3||ChooseItem==4)
 	 {
-		 GetDlgItem(IDC_staticA)->ShowWindow(SW_SHOW);
-		 GetDlgItem(IDC_Angle)->ShowWindow(SW_SHOW);
-		 GetDlgItem(IDC_group)->ShowWindow(SW_SHOW);
-		 GetDlgItem(IDC_dirPic)->ShowWindow(SW_SHOW);
-		 GetDlgItem(IDC_dirP)->ShowWindow(SW_SHOW);
+		 GetDlgItem(IDC_group)->EnableWindow(TRUE);
+		 GetDlgItem(IDC_dirPic)->EnableWindow(TRUE);
+		 GetDlgItem(IDC_dirP)->EnableWindow(TRUE);
 	 }
 	 else
 	 {
-		 GetDlgItem(IDC_staticA)->ShowWindow(SW_HIDE);
-		 GetDlgItem(IDC_Angle)->ShowWindow(SW_HIDE);
-		 GetDlgItem(IDC_group)->ShowWindow(SW_HIDE);
-		 GetDlgItem(IDC_dirPic)->ShowWindow(SW_HIDE);
-		 GetDlgItem(IDC_dirP)->ShowWindow(SW_HIDE);
+		 GetDlgItem(IDC_group)->EnableWindow(FALSE);
+		 GetDlgItem(IDC_dirPic)->EnableWindow(FALSE);
+		 GetDlgItem(IDC_dirP)->EnableWindow(FALSE);
 	 }
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
@@ -412,7 +407,7 @@ void CMeasure::OnBnClickedStartmea()
 		return;
 	}
 	int meaStatus=0;
-	CString strshow="测量结果：\r\n";
+	CString strshow="测量结果：\r\n\r\n";
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
@@ -430,7 +425,7 @@ void CMeasure::OnBnClickedStartmea()
 				if(isChaChoose[ch]&&ch!=chaRefer-1)
 				{
 					CString s;
-					s.Format("待测水听器通道 %d：\r\n");
+					s.Format("待测水听器通道 %d：\r\n\r\n",ch+1);
 					strshow+=s;
 					float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
 					for(unsigned int i=1;i<Result[ch].size();i++)
@@ -444,7 +439,7 @@ void CMeasure::OnBnClickedStartmea()
 							minf=startf+i*deltaf;
 						}
 					}
-					s.Format("最大灵敏度级 %.2fdB @ %.2fkHz\r\n最小灵敏度级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+					s.Format("最大灵敏度级 %.2fdB @ %.2fkHz\r\n\r\n最小灵敏度级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
 					strshow+=s;
 				}				
 			}
@@ -464,7 +459,7 @@ void CMeasure::OnBnClickedStartmea()
 			if(isChaChoose[ch]&&ch!=chaRefer-1)
 			{
 				CString s;
-				s.Format("待测发射换能器通道 %d：\r\n");
+				s.Format("待测发射换能器通道 %d：\r\n\r\n",ch+1);
 				strshow+=s;
 				float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
 				for(unsigned int i=1;i<Result[ch].size();i++)
@@ -478,7 +473,7 @@ void CMeasure::OnBnClickedStartmea()
 						minf=startf+i*deltaf;
 					}
 				}
-				s.Format("最大发送电压响应级 %.2fdB @ %.2fkHz\r\n最小发送电压响应级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+				s.Format("最大发送电压响应级 %.2fdB @ %.2fkHz\r\n\r\n最小发送电压响应级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
 				strshow+=s;
 			}				
 		}
@@ -498,26 +493,44 @@ void CMeasure::OnBnClickedStartmea()
 			if(isChaChoose[ch])
 			{
 				CString s;
-				s.Format("待测换能器通道 %d：\r\n");
+				s.Format("待测换能器通道 %d\r\n\r\n",ch+1);
 				strshow+=s;
-				float maxa=MeaAngle[0],maxm=Result[ch][0],a[2]={MeaAngle[0],MeaAngle[0]};
+				float maxa=MeaAngle[0],maxm=Result[ch][0],a[6]={0,0,0,0,0,0};
 				int k=0;
 				for(unsigned int i=1;i<Result[ch].size();i++)
 				{
 					if(maxm<Result[ch][i]) {
 						maxm=Result[ch][i];
 						maxa=MeaAngle[i];
+						k=i;
 					}
 				}
-				for(unsigned int i=0;i<Result[ch].size();i++)
+				for(unsigned int j=k;j<Result[ch].size();j++)
 				{
-					if((int)(20*log(Result[ch][i]/maxm))==-3)
+					int temp=(int)(20*log10(Result[ch][j]/maxm));
+					if(temp==-2) a[0]=MeaAngle[j];
+					if(temp==-3) 
 					{
-						a[k]=MeaAngle[i];
-						k++;
+						a[1]=MeaAngle[j];break;//不确定是否真的有-3dB的值
 					}
+					if(temp==-4) a[2]=MeaAngle[j];				
 				}
-				s.Format("最大角度 %.2f°\r\n-3dB带宽 %.2fdB @ %.2fkHz",maxa,abs(a[0]-a[1]));
+				for(unsigned int j=k;j>=0;j--)
+				{
+					int temp=(int)(20*log10(Result[ch][j]/maxm));
+					if(temp==-2) a[5]=MeaAngle[j];
+					if(temp==-3) 
+					{
+						a[4]=MeaAngle[j];break;
+					}
+					if(temp==-4) a[3]=MeaAngle[j];				
+				}
+				float da1,da2;
+				if(a[1]!=0&&a[4]!=0) {da1=a[1];da2=a[4];}
+				else if(a[1]!=0&&a[4]==0) {da1=a[1];da2=(a[3]+a[5])/2;}
+				else if(a[1]==0&&a[4]!=0) {da1=(a[0]+a[2])/2;da2=a[4];}
+				else {da1=(a[0]+a[2])/2;da2=(a[3]+a[5])/2;}
+				s.Format("最强信号的角度位置 %.1f°\r\n\r\n-3dB带宽 %.1f°",maxa,abs(da1-da2));
 				strshow+=s;
 			}				
 		}
@@ -1166,7 +1179,7 @@ int CMeasure::MeasureDir()
 	}
 	MeaSetManual();//设为手动
 	CString stemp;
-	stemp.Format("当前频率为 %.1fkHz\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
+	stemp.Format("\r\n当前频率为 %.1fkHz\r\n\r\n测量的角度范围 %d°~%d°\r\n\r\n回转速度为 %d秒/圈\r\n\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) 
 	{
 		m_com.put_OutBufferCount(0);
@@ -1174,6 +1187,7 @@ int CMeasure::MeasureDir()
 		return -1;
 	}
 	SetDlgItemTextA(IDC_showPara,stemp);
+	SetTimer(10,1,NULL);
 	f=startf;
 	isMeasure=true;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
@@ -1193,27 +1207,46 @@ int CMeasure::MeasureDir()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	float angle=MeaReadCurrentAngle();//读出当前的角度值
-	m_Angle.Format("%.1f°",angle);
-	SetDlgItemText(IDC_Angle,m_Angle);
+	 
 	bool isRightDir=true;
 	SetDlgItemTextA(IDC_Show,"正在转到指定角度，请稍候......");
-	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
+	if(angle<=StartAngle)
 	{
 		MeaRotateTargetAngle(Speed,StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
 		isRightDir=true;
 	}
+	else if(abs(angle-EndAngle)<=abs(angle-StartAngle))
+	{
+		if(angle<=EndAngle)
+		{
+			MeaRotateTargetAngle(Speed,EndAngle);
+			isRightDir=false;
+		}
+		else
+		{
+			int t=(int)((angle-EndAngle)*Speed/360+1);
+			MeaRotateLeft(Speed);
+			Sleep(t*1000);
+			MeaStopRotateLeft();
+			MeaRotateTargetAngle(Speed,EndAngle);
+			isRightDir=false;
+		}		
+	}
 	else 
 	{
-		MeaRotateTargetAngle(Speed,EndAngle);
-		isRightDir=false;
+		int t=(int)((angle-StartAngle)*Speed/360+1);
+		MeaRotateLeft(Speed);
+		Sleep(t*1000);
+		MeaStopRotateLeft();
+		MeaRotateTargetAngle(Speed,StartAngle);//如果当前位置与起始角度靠近，就转到起始角度
+		isRightDir=true;
 	}
 	angle=MeaReadCurrentAngle();
 	while((isRightDir&&abs(angle-StartAngle)>0.1)||(!isRightDir&&abs(angle-EndAngle)>0.1))//之前调试的时候用写的1，但是相差1度有点大，所以改为0.1试试
 	{
 		angle=MeaReadCurrentAngle();
 	}//等待转到指定角度完成
-	m_Angle.Format("%.1f°",angle);
-	SetDlgItemText(IDC_Angle,m_Angle);
+	 
 	viPrintf(vip,":run\n");
 	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
 	clock_t t_start=clock();
@@ -1260,8 +1293,7 @@ int CMeasure::MeasureDir()
 		}
 		angle=MeaReadCurrentAngle();
 		MeaAngle.push_back(angle);
-		m_Angle.Format("%.1f°",angle);
-		SetDlgItemText(IDC_Angle,m_Angle);
+		 
 		//保存角度和电压值
 		for(int i=0;i<4;i++)
 		{
@@ -1297,8 +1329,7 @@ int CMeasure::MeasureDir()
 	}//最后一个角度的电压值
 	angle=MeaReadCurrentAngle();
 	MeaAngle.push_back(angle);
-	m_Angle.Format("%.1f°",angle);
-	SetDlgItemText(IDC_Angle,m_Angle);
+	 
 	huatu_recidir();
 	viPrintf(vip,":timebase:mode main\n");
 	clock_t t_end=clock();
@@ -1392,6 +1423,8 @@ void CMeasure::huatu_recidir()
 	pDC->TextOutA(x-30,y+20,str);
 	str.Format("-180°(180°)");
 	pDC->TextOutA(-20,R+10,str);
+	str.Format("当前角度为：%.1f°",MeaAngle.back());
+	pDC->TextOutA(-w/2+20,-h/2+20,str);
 	////debug
 	//CPen ppen;
 	//ppen.CreatePen(PS_SOLID, 1, RGB(255,0,0));
@@ -1544,15 +1577,15 @@ void CMeasure::huatu_dB()
 			for(unsigned int i=1;i<Result[ch].size();i++)
 				if(max<Result[ch][i]) max=Result[ch][i];
 			deltaA=PI*MeaAngle[0]/180;
-			float db=20*log(Result[ch][0]/max);
-			if(db<=mindB)//分贝数最小为-30dB（0.0056），更小的就不计算了
+			float db=20*log10(Result[ch][0]/max);
+			if(db<=mindB)//分贝数最小为-45dB（0.0056），更小的就不计算了
 				pDC->MoveTo((int)(deltaR*sin(deltaA)),-(int)(deltaR*cos(deltaA)));//将画笔移到圆心
 			else
 				pDC->MoveTo((int)(((db-mindB)/perdb+1)*deltaR*sin(deltaA)),-(int)(((db-mindB)/perdb+1)*deltaR*cos(deltaA)));//将画笔移到圆心
 			for(unsigned int i=1;i<Result[ch].size();i++)
 			{
 				deltaA=PI*MeaAngle[i]/180;
-				db=20*log(Result[ch][i]/max);
+				db=20*log10(Result[ch][i]/max);
 				if(db<mindB)
 				{
 					x=(int)(deltaR*sin(deltaA));
@@ -2574,3 +2607,4 @@ void CMeasure::MeaStopRotateLeft()
 		AfxMessageBox("逆时针停操作出错!");
 	}
 }
+

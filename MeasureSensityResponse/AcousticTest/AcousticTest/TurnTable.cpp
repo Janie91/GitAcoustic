@@ -826,12 +826,7 @@ void CTurnTable::OnBnClickedquit()
 	Speed=GetDlgItemInt(IDC_Speed);
 	StartAngle=GetDlgItemInt(IDC_StartAngle);
 	EndAngle=GetDlgItemInt(IDC_EndAngle);
-	clock_t start=clock();
-	ReadCurrentAngle();
-	clock_t end=clock();
-	CString stemp;
-	stemp.Format("测量时间为 %.4f s",(double)(end-start)/CLOCKS_PER_SEC);
-	MessageBox(stemp);
+	
 
 }
 

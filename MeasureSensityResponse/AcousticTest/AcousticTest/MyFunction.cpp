@@ -5,7 +5,7 @@
 ViSession vidg,vidp,vig,vip;
 long status=-1;
 int ChooseItem=0;
-float f=3.0,v=500.0,Bwid=2.0,Brep=1.0;
+float f=3.0,v=500.0,Bwid=2.0,Brep=0.5;
 float startf=3.0,endf=10.0,deltaf=1.0;
 bool isChaChoose[4]={false,false,false,false};
 int chaRefer=1;
