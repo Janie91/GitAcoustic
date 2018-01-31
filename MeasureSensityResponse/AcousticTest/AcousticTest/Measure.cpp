@@ -116,6 +116,22 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 		 viOpenDefaultRM(&rm);
 		 st=viOpen(rm,"USB0::0x0957::0x3D18::MY51380004::0::INSTR",VI_NULL,VI_NULL,&U2751);
 	 }
+	 if(ChooseItem==2||ChooseItem==3||ChooseItem==4)
+	 {
+		 GetDlgItem(IDC_staticA)->ShowWindow(SW_SHOW);
+		 GetDlgItem(IDC_Angle)->ShowWindow(SW_SHOW);
+		 GetDlgItem(IDC_group)->ShowWindow(SW_SHOW);
+		 GetDlgItem(IDC_dirPic)->ShowWindow(SW_SHOW);
+		 GetDlgItem(IDC_dirP)->ShowWindow(SW_SHOW);
+	 }
+	 else
+	 {
+		 GetDlgItem(IDC_staticA)->ShowWindow(SW_HIDE);
+		 GetDlgItem(IDC_Angle)->ShowWindow(SW_HIDE);
+		 GetDlgItem(IDC_group)->ShowWindow(SW_HIDE);
+		 GetDlgItem(IDC_dirPic)->ShowWindow(SW_HIDE);
+		 GetDlgItem(IDC_dirP)->ShowWindow(SW_HIDE);
+	 }
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -369,10 +385,18 @@ void CMeasure::OnBnClickedStartmea()
 {
 	// TODO: Add your control notification handler code here
 	renew();
-	if((ChooseItem==0||ChooseItem==1)&&standMp.empty()) 
+	if(ChooseItem==0||ChooseItem==1) 
 	{
-		AfxMessageBox("请选择标准水听器文件！");
-		return;
+		if(standMp.empty())
+		{
+			AfxMessageBox("请选择标准水听器文件！");
+			return;
+		}
+		if(startf<(standMp.begin()->first)||endf>(standMp.rbegin()->first))
+		{
+			AfxMessageBox("测量频率范围超过标准水听器的范围！");
+			return;
+		}
 	}
 	int chcount=0;
 	for(int i=0;i<4;i++)
@@ -387,8 +411,8 @@ void CMeasure::OnBnClickedStartmea()
 		AfxMessageBox("请选择示波器的测量通道！");
 		return;
 	}
-	SetDlgItemTextA(IDC_Show,"开始测量，请稍候......");
 	int meaStatus=0;
+	CString strshow="测量结果：\r\n";
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
@@ -399,6 +423,33 @@ void CMeasure::OnBnClickedStartmea()
 			return;
 		}
 		SetTimer(1,1000,NULL);
+		if(MeaCount==1)
+		{
+			for(int ch=0;ch<4;ch++)
+			{
+				if(isChaChoose[ch]&&ch!=chaRefer-1)
+				{
+					CString s;
+					s.Format("待测水听器通道 %d：\r\n");
+					strshow+=s;
+					float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
+					for(unsigned int i=1;i<Result[ch].size();i++)
+					{
+						if(maxm<Result[ch][i]) {
+							maxm=Result[ch][i];
+							maxf=startf+i*deltaf;
+						}
+						if(minm>Result[ch][i]) {
+							minm=Result[ch][i];
+							minf=startf+i*deltaf;
+						}
+					}
+					s.Format("最大灵敏度级 %.2fdB @ %.2fkHz\r\n最小灵敏度级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+					strshow+=s;
+				}				
+			}
+			SetDlgItemTextA(IDC_showPara,strshow);
+		}		
 		break;
 	case 1://测量发射电压响应
 		meaStatus=MeasureResponse();
@@ -408,6 +459,30 @@ void CMeasure::OnBnClickedStartmea()
 			return;
 		}
 		SetTimer(2,1000,NULL);
+		for(int ch=0;ch<4;ch++)
+		{
+			if(isChaChoose[ch]&&ch!=chaRefer-1)
+			{
+				CString s;
+				s.Format("待测发射换能器通道 %d：\r\n");
+				strshow+=s;
+				float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
+				for(unsigned int i=1;i<Result[ch].size();i++)
+				{
+					if(maxm<Result[ch][i]) {
+						maxm=Result[ch][i];
+						maxf=startf+i*deltaf;
+					}
+					if(minm>Result[ch][i]) {
+						minm=Result[ch][i];
+						minf=startf+i*deltaf;
+					}
+				}
+				s.Format("最大发送电压响应级 %.2fdB @ %.2fkHz\r\n最小发送电压响应级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+				strshow+=s;
+			}				
+		}
+		SetDlgItemTextA(IDC_showPara,strshow);
 		break;
 	case 2://测量接收指向性
 	case 3://测量发射指向性
@@ -418,6 +493,35 @@ void CMeasure::OnBnClickedStartmea()
 			return;
 		}
 		SetTimer(3,1000,NULL);
+		for(int ch=0;ch<4;ch++)
+		{
+			if(isChaChoose[ch])
+			{
+				CString s;
+				s.Format("待测换能器通道 %d：\r\n");
+				strshow+=s;
+				float maxa=MeaAngle[0],maxm=Result[ch][0],a[2]={MeaAngle[0],MeaAngle[0]};
+				int k=0;
+				for(unsigned int i=1;i<Result[ch].size();i++)
+				{
+					if(maxm<Result[ch][i]) {
+						maxm=Result[ch][i];
+						maxa=MeaAngle[i];
+					}
+				}
+				for(unsigned int i=0;i<Result[ch].size();i++)
+				{
+					if((int)(20*log(Result[ch][i]/maxm))==-3)
+					{
+						a[k]=MeaAngle[i];
+						k++;
+					}
+				}
+				s.Format("最大角度 %.2f°\r\n-3dB带宽 %.2fdB @ %.2fkHz",maxa,abs(a[0]-a[1]));
+				strshow+=s;
+			}				
+		}
+		SetDlgItemTextA(IDC_showPara,strshow);
 		break;
 	case 4://多频点测量指向性
 		meaStatus=MeaMulDir();
@@ -445,7 +549,7 @@ void CMeasure::OnBnClickedStopmea()
 {
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
-	CreateMulFrePulse(Fs,5000,1000,Bwid/1000,0.5,1);
+	//CreateMulFrePulse(Fs,5000,1000,Bwid/1000,0.5,1);
 }
 
 void CMeasure::OnBnClickedquitsys()
@@ -719,6 +823,7 @@ void CMeasure::Capture(vector<int> cha,int count)
 }
 int CMeasure::MeasureSensity()
 {
+	SetDlgItemTextA(IDC_Show,"准备测量，请稍候......");
 	float Mp=-1;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
@@ -737,8 +842,10 @@ int CMeasure::MeasureSensity()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n测量的频率范围 %.1fkHz~%.1fkHz\n %d次测量",startf,endf,MeaCount);
+	stemp.Format("测量的频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
+		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	SetDlgItemTextA(IDC_showPara,stemp);
 	isMeasure=true;
 	for(int c=0;isMeasure&&c<MeaCount;c++)
 	{
@@ -750,9 +857,10 @@ int CMeasure::MeasureSensity()
 		}
 		if(MeaCount>1)
 		{
-			stemp.Format("正在进行第 %d 次测量，请稍后......",c+1);
+			stemp.Format("正在进行第 %d 次测量，请稍候......",c+1);
 			SetDlgItemTextA(IDC_Show,stemp);
 		}
+		else SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
 		while(isMeasure&&f<=endf)
 		{
 			//用来接收“停止测量”按钮按下的消息
@@ -775,47 +883,10 @@ int CMeasure::MeasureSensity()
 			{
 				if(isChaChoose[i])
 				{
-					//float vrange,vtemp;
-					//bool isok=true;
-					//int flag=0;
 					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 					viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 					viPrintf(vip,":measure:source channel%d\n",i+1);
 					u[i]=autoV(i+1);
-					//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-					//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					//vtemp=u[i];
-					//while(vtemp<-1e8||vrange<-1e8)
-					//{
-					//	if(flag>10)
-					//	{
-					//		isok=false;
-					//		break;
-					//	}
-					//	flag++;
-					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					//}
-					//while(vtemp>vrange/8.0*4) 
-					//{
-					//	viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					//	isok=false;
-					//}
-					////波形显示小于两格
-					//while(vtemp<vrange/8.0)
-					//{
-					//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-					//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-					//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-					//	isok=false;
-					//}
-					//if(isok==false)
-					//{
-					//	u[i]=0;
-					//	i=i-1;//此通道重新测量一遍					
-					//}
 				}
 			}
 			for(int i=0;i<4;i++)
@@ -923,6 +994,7 @@ void CMeasure::huatu_sensity()
 }
 int CMeasure::MeasureResponse()
 {
+	SetDlgItemTextA(IDC_Show,"准备测量，请稍候......");
 	float Mp=-1;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
@@ -941,8 +1013,11 @@ int CMeasure::MeasureResponse()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n测量的频率范围 %.1fkHz~%.1fkHz",startf,endf);
+	stemp.Format("测量的频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
+		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	SetDlgItemTextA(IDC_showPara,stemp);
+	SetDlgItemTextA(IDC_Show,"开始测量，请稍候......");
 	f=startf;
 	isMeasure=true;
 	while(isMeasure&&f<=endf)
@@ -966,48 +1041,10 @@ int CMeasure::MeasureResponse()
 		{
 			if(isChaChoose[i])
 			{
-				//float vrange,vtemp;
-				//bool isok=true;
-				//int flag=0;
 				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
 				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
 				viPrintf(vip,":measure:source channel%d\n",i+1);
 				u[i]=autoV(i+1);
-				//viQueryf(vip,":measure:vpp?\n","%f\n",&u[i]);
-				//viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//vtemp=u[i];
-				//while(vtemp<-1e8||vrange<-1e8)
-				//{
-				//	if(flag>10)
-				//	{
-				//		isok=false;
-				//		break;
-				//	}
-				//	flag++;
-				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				//}
-				//while(vtemp>vrange/8.0*4) 
-				//{
-				//	viPrintf(vip,":channel%d:range %f\n",i+1,2*vrange);
-				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				//	isok=false;
-				//}
-				////波形显示小于两格
-				//while(vtemp<vrange/8.0*2)
-				//{
-				//	viPrintf(vip,":channel%d:range %f\n",i+1,vrange/2);
-				//	viQueryf(vip,":channel%d:range?\n","%f\n",i+1,&vrange);
-				//	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
-				//	isok=false;
-				//}
-				//if(isok==false)
-				//{
-				//	u[i]=0;
-				//	i=i-1;//此通道重新测量一遍
-				//	
-				//}
 			}
 		}
 		for(int i=0;i<4;i++)
@@ -1129,13 +1166,14 @@ int CMeasure::MeasureDir()
 	}
 	MeaSetManual();//设为手动
 	CString stemp;
-	stemp.Format("参数设置完成?是否开始测量？\n当前频率为 %.1fkHz\n测量的角度范围 %d°~%d°\n回转速度为 %d",f,StartAngle,EndAngle,Speed);
+	stemp.Format("当前频率为 %.1fkHz\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) 
 	{
 		m_com.put_OutBufferCount(0);
 		m_com.put_PortOpen(false);
 		return -1;
 	}
+	SetDlgItemTextA(IDC_showPara,stemp);
 	f=startf;
 	isMeasure=true;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
@@ -1155,6 +1193,8 @@ int CMeasure::MeasureDir()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	float angle=MeaReadCurrentAngle();//读出当前的角度值
+	m_Angle.Format("%.1f°",angle);
+	SetDlgItemText(IDC_Angle,m_Angle);
 	bool isRightDir=true;
 	SetDlgItemTextA(IDC_Show,"正在转到指定角度，请稍候......");
 	if(abs(angle-StartAngle)<=abs(angle-EndAngle))
@@ -1172,7 +1212,8 @@ int CMeasure::MeasureDir()
 	{
 		angle=MeaReadCurrentAngle();
 	}//等待转到指定角度完成
-
+	m_Angle.Format("%.1f°",angle);
+	SetDlgItemText(IDC_Angle,m_Angle);
 	viPrintf(vip,":run\n");
 	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
 	clock_t t_start=clock();
@@ -1219,6 +1260,8 @@ int CMeasure::MeasureDir()
 		}
 		angle=MeaReadCurrentAngle();
 		MeaAngle.push_back(angle);
+		m_Angle.Format("%.1f°",angle);
+		SetDlgItemText(IDC_Angle,m_Angle);
 		//保存角度和电压值
 		for(int i=0;i<4;i++)
 		{
@@ -1254,6 +1297,8 @@ int CMeasure::MeasureDir()
 	}//最后一个角度的电压值
 	angle=MeaReadCurrentAngle();
 	MeaAngle.push_back(angle);
+	m_Angle.Format("%.1f°",angle);
+	SetDlgItemText(IDC_Angle,m_Angle);
 	huatu_recidir();
 	viPrintf(vip,":timebase:mode main\n");
 	clock_t t_end=clock();
