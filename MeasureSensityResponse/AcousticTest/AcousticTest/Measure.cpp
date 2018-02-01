@@ -127,6 +127,7 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 		 GetDlgItem(IDC_dirPic)->EnableWindow(FALSE);
 		 GetDlgItem(IDC_dirP)->EnableWindow(FALSE);
 	 }
+	 SetDlgItemTextA(IDC_showPara,"\r\n\r\n\r\n\r\n等待测量......");
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -387,7 +388,7 @@ void CMeasure::OnBnClickedStartmea()
 			AfxMessageBox("请选择标准水听器文件！");
 			return;
 		}
-		if(startf<(standMp.begin()->first)||endf>(standMp.rbegin()->first))
+		if(startf*1000<(standMp.begin()->first)||endf*1000>(standMp.rbegin()->first))
 		{
 			AfxMessageBox("测量频率范围超过标准水听器的范围！");
 			return;
@@ -407,7 +408,7 @@ void CMeasure::OnBnClickedStartmea()
 		return;
 	}
 	int meaStatus=0;
-	CString strshow="测量结果：\r\n\r\n";
+	CString strshow;
 	switch(ChooseItem)
 	{
 	case 0: //测量灵敏度
@@ -418,6 +419,7 @@ void CMeasure::OnBnClickedStartmea()
 			return;
 		}
 		SetTimer(1,1000,NULL);
+		GetDlgItemTextA(IDC_showPara,strshow);
 		if(MeaCount==1)
 		{
 			for(int ch=0;ch<4;ch++)
@@ -425,7 +427,7 @@ void CMeasure::OnBnClickedStartmea()
 				if(isChaChoose[ch]&&ch!=chaRefer-1)
 				{
 					CString s;
-					s.Format("待测水听器通道 %d：\r\n\r\n",ch+1);
+					s.Format("\r\n\r\n测量结果：\r\n待测水听器通道 %d通道\r\n",ch+1);
 					strshow+=s;
 					float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
 					for(unsigned int i=1;i<Result[ch].size();i++)
@@ -439,7 +441,7 @@ void CMeasure::OnBnClickedStartmea()
 							minf=startf+i*deltaf;
 						}
 					}
-					s.Format("最大灵敏度级 %.2fdB @ %.2fkHz\r\n\r\n最小灵敏度级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+					s.Format("最大灵敏度级\r\n  %.2fdB @ %.2fkHz\r\n最小灵敏度级\r\n  %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
 					strshow+=s;
 				}				
 			}
@@ -454,12 +456,13 @@ void CMeasure::OnBnClickedStartmea()
 			return;
 		}
 		SetTimer(2,1000,NULL);
+		GetDlgItemTextA(IDC_showPara,strshow);
 		for(int ch=0;ch<4;ch++)
 		{
 			if(isChaChoose[ch]&&ch!=chaRefer-1)
 			{
 				CString s;
-				s.Format("待测发射换能器通道 %d：\r\n\r\n",ch+1);
+				s.Format("\r\n\r\n测量结果：\r\n待测发射换能器通道 %d通道\r\n\r\n",ch+1);
 				strshow+=s;
 				float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
 				for(unsigned int i=1;i<Result[ch].size();i++)
@@ -473,7 +476,7 @@ void CMeasure::OnBnClickedStartmea()
 						minf=startf+i*deltaf;
 					}
 				}
-				s.Format("最大发送电压响应级 %.2fdB @ %.2fkHz\r\n\r\n最小发送电压响应级 %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+				s.Format("最大发送电压响应级\r\n  %.2fdB @ %.2fkHz\r\n最小发送电压响应级\r\n  %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
 				strshow+=s;
 			}				
 		}
@@ -488,15 +491,16 @@ void CMeasure::OnBnClickedStartmea()
 			return;
 		}
 		SetTimer(3,1000,NULL);
+		GetDlgItemTextA(IDC_showPara,strshow);
 		for(int ch=0;ch<4;ch++)
 		{
 			if(isChaChoose[ch])
 			{
 				CString s;
-				s.Format("待测换能器通道 %d\r\n\r\n",ch+1);
+				s.Format("待测换能器通道 %d通道\r\n",ch+1);
 				strshow+=s;
 				float maxa=MeaAngle[0],maxm=Result[ch][0],a[6]={0,0,0,0,0,0};
-				int k=0;
+				unsigned int k=0;
 				for(unsigned int i=1;i<Result[ch].size();i++)
 				{
 					if(maxm<Result[ch][i]) {
@@ -515,7 +519,7 @@ void CMeasure::OnBnClickedStartmea()
 					}
 					if(temp==-4) a[2]=MeaAngle[j];				
 				}
-				for(unsigned int j=k;j>=0;j--)
+				for(unsigned int j=0;j<k;j++)
 				{
 					int temp=(int)(20*log10(Result[ch][j]/maxm));
 					if(temp==-2) a[5]=MeaAngle[j];
@@ -526,11 +530,11 @@ void CMeasure::OnBnClickedStartmea()
 					if(temp==-4) a[3]=MeaAngle[j];				
 				}
 				float da1,da2;
-				if(a[1]!=0&&a[4]!=0) {da1=a[1];da2=a[4];}
-				else if(a[1]!=0&&a[4]==0) {da1=a[1];da2=(a[3]+a[5])/2;}
-				else if(a[1]==0&&a[4]!=0) {da1=(a[0]+a[2])/2;da2=a[4];}
+				if((a[1]-0.0>=0.001)&&(a[4]-0.0>=0.001)) {da1=a[1];da2=a[4];}
+				else if((a[1]-0.0>0.001)&&(a[4]-0.0<0.001)) {da1=a[1];da2=(a[3]+a[5])/2;}
+				else if((a[1]-0.0<0.001)&&(a[4]-0.0>0.001)) {da1=(a[0]+a[2])/2;da2=a[4];}
 				else {da1=(a[0]+a[2])/2;da2=(a[3]+a[5])/2;}
-				s.Format("最强信号的角度位置 %.1f°\r\n\r\n-3dB带宽 %.1f°",maxa,abs(da1-da2));
+				s.Format("主瓣的角度位置 %.1f°\r\n-3dB带宽 %.1f°",maxa,abs(da1-da2));
 				strshow+=s;
 			}				
 		}
@@ -751,15 +755,15 @@ void CMeasure::Onsave()
 			}
 		}
 	}
-	CString strPath;
-	char szPath[MAX_PATH];
-	GetCurrentDirectory(MAX_PATH,szPath);
-	strPath=szPath;
-	strPath+="\\测试数据.xls";
-	//保存excel文件
-	sheet.SaveAs(strPath,vtMissing,vtMissing,vtMissing,vtMissing,
-		vtMissing,vtMissing,vtMissing,vtMissing,vtMissing);
-	
+	///*CString strPath;*/
+	//char szPath[MAX_PATH];
+	//GetCurrentDirectory(MAX_PATH,szPath);
+	////strPath=szPath;
+	////strPath+="\\测试数据.xls";
+	////保存excel文件
+	//sheet.SaveAs(szPath,vtMissing,vtMissing,vtMissing,vtMissing,
+	//	vtMissing,vtMissing,vtMissing,vtMissing,vtMissing);
+	//
 	//释放对象    
     range.ReleaseDispatch();  
     sheet.ReleaseDispatch();  
@@ -855,7 +859,7 @@ int CMeasure::MeasureSensity()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("测量的频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
+	stemp.Format("频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n测量次数 %d次\r\n标准水听器通道 %d",
 		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
@@ -971,9 +975,11 @@ void CMeasure::huatu_sensity()
 	}
 	pDC->SelectObject(pOldPen);
 	delete pNewPen;
-	CPen* pPen=new CPen;
-	pPen->CreatePen(PS_SOLID,2,RGB(255,0,0));
-	pOldPen=pDC->SelectObject(pPen);
+	CPen pPen[4];
+	pPen[0].CreatePen(PS_SOLID,3,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,3,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,3,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,3,RGB(255,0,0));//红色画笔
 
 	////debug
 	//float Result[10]={-210.7f,-210.6f,-218.1f,-217.6f,-215.8f,-214.9f,-215.3f,-215.4f,-215.9f,-217.0f};
@@ -989,9 +995,14 @@ void CMeasure::huatu_sensity()
 	{
 		if(isChaChoose[ch])
 		{
+			pOldPen=pDC->SelectObject(&pPen[ch]);
 			if(Result[ch].size()==0) continue;//注意要用continue，如果用break直接就跳出循环了，不会画其他通道的图形
 			pDC->MoveTo(0,-(int)((Result[ch][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
-			if(endf==startf) continue;
+			if(endf==startf) 
+			{
+				pDC->SetPixel(0,-(int)((Result[0][0]+150)*deltaY),RGB(255,0,0));
+				continue;
+			}
 			for(unsigned int i=1;i<Result[ch].size();i++)
 			{
 				x=(int)(i*deltaf*deltaX*50/(endf-startf));
@@ -1002,7 +1013,6 @@ void CMeasure::huatu_sensity()
 	}
 
 	pDC->SelectObject(pOldPen);
-	delete pPen;
 
 }
 int CMeasure::MeasureResponse()
@@ -1096,21 +1106,21 @@ void CMeasure::huatu_response()
 	pDC->SetViewportOrg(rect.left,rect.bottom);//原点设为最左下角的点
 	//画网格线
 	CString str;
-	int temp=0;
+	float temp=0.0;
 	for(x=0;x<=50;x+=2)
 	{
 		pDC->MoveTo((int)(x*deltaX),0);
 		pDC->LineTo((int)(x*deltaX),-rect.Height());
 		if(endf==startf)
 		{
-			str.Format("%d",(int)(startf+x));
+			str.Format("%.1f",startf+x);
 			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
 		}
 		else
 		{
-			if((int)(startf+(endf-startf)/50*x)==temp) continue;
-			temp=(int)(startf+(endf-startf)/50*x);
-			str.Format("%d",temp);
+			//if((int)(startf+(endf-startf)/50*x)==temp) continue;
+			temp=startf+(endf-startf)/50*x;
+			str.Format("%.1f",temp);
 			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
 		}
 	}
@@ -1123,10 +1133,10 @@ void CMeasure::huatu_response()
 	}
 	pDC->SelectObject(pOldPen);
 	CPen pPen[4];
-	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
-	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
-	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
-	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	pPen[0].CreatePen(PS_SOLID,3,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,3,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,3,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,3,RGB(255,0,0));//红色画笔
 	//pOldPen=pDC->SelectObject(&pPen);
 
 	////debug
@@ -1158,6 +1168,7 @@ void CMeasure::huatu_response()
 
 	pDC->SelectObject(pOldPen);
 }
+float angle=0.0;
 int CMeasure::MeasureDir()
 {
 	if(m_com.get_PortOpen())
@@ -1179,15 +1190,15 @@ int CMeasure::MeasureDir()
 	}
 	MeaSetManual();//设为手动
 	CString stemp;
-	stemp.Format("\r\n当前频率为 %.1fkHz\r\n\r\n测量的角度范围 %d°~%d°\r\n\r\n回转速度为 %d秒/圈\r\n\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
-	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) 
+	stemp.Format("当前频率为 %.1fkHz\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d秒/圈\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
+	if(MessageBox(stemp,"是否测量？",MB_OKCANCEL)==IDCANCEL) 
 	{
 		m_com.put_OutBufferCount(0);
 		m_com.put_PortOpen(false);
 		return -1;
 	}
 	SetDlgItemTextA(IDC_showPara,stemp);
-	SetTimer(10,1,NULL);
+	m_DirPic=0;
 	f=startf;
 	isMeasure=true;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
@@ -1206,8 +1217,8 @@ int CMeasure::MeasureDir()
 	}
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
-	float angle=MeaReadCurrentAngle();//读出当前的角度值
-	 
+	angle=MeaReadCurrentAngle();//读出当前的角度值
+	huatu_recidir(); 
 	bool isRightDir=true;
 	SetDlgItemTextA(IDC_Show,"正在转到指定角度，请稍候......");
 	if(angle<=StartAngle)
@@ -1224,7 +1235,7 @@ int CMeasure::MeasureDir()
 		}
 		else
 		{
-			int t=(int)((angle-EndAngle)*Speed/360+1);
+			int t=(int)((angle-EndAngle)*Speed/360+2);
 			MeaRotateLeft(Speed);
 			Sleep(t*1000);
 			MeaStopRotateLeft();
@@ -1234,7 +1245,7 @@ int CMeasure::MeasureDir()
 	}
 	else 
 	{
-		int t=(int)((angle-StartAngle)*Speed/360+1);
+		int t=(int)((angle-StartAngle)*Speed/360+2);
 		MeaRotateLeft(Speed);
 		Sleep(t*1000);
 		MeaStopRotateLeft();
@@ -1361,6 +1372,7 @@ void CMeasure::huatu_recidir()
 	float deltaR=(float)R/cycle_num;
 	for(int i=1;i<=cycle_num;i++)
 	{
+		if(i==cycle_num-3) continue;
 		pDC->Ellipse(-(int)(i*deltaR),-(int)(i*deltaR),(int)(i*deltaR),(int)(i*deltaR));//画圆，其实是找到一个外切正方形的左上角顶点和右下角顶点
 	}
 	pDC->Ellipse(-(int)(cycle_num*deltaR),-(int)(cycle_num*deltaR),(int)(cycle_num*deltaR),(int)(cycle_num*deltaR));//最外面的圆
@@ -1378,10 +1390,10 @@ void CMeasure::huatu_recidir()
 		pDC->LineTo(x,y);//画了二三象限的半径
 	}
 	CPen p;
-	p.CreatePen(PS_SOLID, 1, RGB(255,0,0));
+	p.CreatePen(PS_DASH, 1, RGB(255,0,0));
 	pOldPen=pDC->SelectObject(&p);
 	pDC->Ellipse(-(int)((cycle_num-3)*deltaR),-(int)((cycle_num-3)*deltaR),
-		(int)((cycle_num-3)*deltaR),(int)((cycle_num-3)*deltaR));//3dB的圆
+		(int)((cycle_num-3)*deltaR),(int)((cycle_num-3)*deltaR));//-3dB的圆
 	CString str;
 	str.Format("%d°",0);
 	pDC->TextOutA(0,-R-20,str);
@@ -1423,7 +1435,7 @@ void CMeasure::huatu_recidir()
 	pDC->TextOutA(x-30,y+20,str);
 	str.Format("-180°(180°)");
 	pDC->TextOutA(-20,R+10,str);
-	str.Format("当前角度为：%.1f°",MeaAngle.back());
+	str.Format("当前角度为：%.1f°",angle);
 	pDC->TextOutA(-w/2+20,-h/2+20,str);
 	////debug
 	//CPen ppen;
@@ -1446,10 +1458,10 @@ void CMeasure::huatu_recidir()
 
 	//////debug
 	CPen pPen[4];
-	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
-	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
-	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
-	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	pPen[0].CreatePen(PS_SOLID,3,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,3,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,3,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,3,RGB(255,0,0));//红色画笔
 	
 	for(int ch=0;ch<4;ch++)
 	{
@@ -1560,11 +1572,13 @@ void CMeasure::huatu_dB()
 	pDC->TextOutA(x-30,y+20,str);
 	str.Format("-180°(180°)");
 	pDC->TextOutA(-20,R+10,str);
+	str.Format("当前角度为：%.1f°",angle);
+	pDC->TextOutA(-w/2+20,-h/2+20,str);
 	CPen pPen[4];
-	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
-	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
-	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
-	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	pPen[0].CreatePen(PS_SOLID,3,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,3,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,3,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,3,RGB(255,0,0));//红色画笔
 	
 	for(int ch=0;ch<4;ch++)
 	{
@@ -1840,10 +1854,10 @@ void CMeasure::huatu_muldir()
 	str.Format("-180°(180°)");
 	pDC->TextOutA(-20,R+10,str);
 	CPen pPen[4];
-	pPen[0].CreatePen(PS_SOLID,2,RGB(255,165,0));//橙色画笔
-	pPen[1].CreatePen(PS_SOLID,2,RGB(0,255,0));//绿色画笔
-	pPen[2].CreatePen(PS_SOLID,2,RGB(0,0,255));//蓝色画笔
-	pPen[3].CreatePen(PS_SOLID,2,RGB(255,0,0));//红色画笔
+	pPen[0].CreatePen(PS_SOLID,3,RGB(255,165,0));//橙色画笔
+	pPen[1].CreatePen(PS_SOLID,3,RGB(0,255,0));//绿色画笔
+	pPen[2].CreatePen(PS_SOLID,3,RGB(0,0,255));//蓝色画笔
+	pPen[3].CreatePen(PS_SOLID,3,RGB(255,0,0));//红色画笔
 	
 	for(int ch=0;ch<4;ch++)
 	{
@@ -2021,7 +2035,7 @@ void CMeasure::huatu_huyi()
 	}
 	pDC->SelectObject(pOldPen);
 	CPen pPen;
-	pPen.CreatePen(PS_SOLID,2,RGB(255,0,0));
+	pPen.CreatePen(PS_SOLID,3,RGB(255,0,0));
 	pOldPen=pDC->SelectObject(&pPen);
 	if(Result[0].size()!=0)
 	{
