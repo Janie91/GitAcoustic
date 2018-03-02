@@ -27,6 +27,7 @@ CSetConditionDlg::CSetConditionDlg(CWnd* pParent /*=NULL*/)
 	m_d3 = d[2];
 	m_d4 = d[3];
 	m_Ratio=Ratio;
+	m_Cv=Cv;
 	m_gain1 = Gain[0];
 	m_gain2 = Gain[1];
 	m_gain3 = Gain[2];
@@ -50,6 +51,7 @@ void CSetConditionDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_Gain3, m_gain3);
 	DDX_Text(pDX, IDC_Gain4, m_gain4);
 	DDX_Control(pDX, IDC_MeaCount, m_MeaCount);
+	DDX_Text(pDX, IDC_Cv, m_Cv);
 }
 
 
@@ -72,7 +74,8 @@ void CSetConditionDlg::OnBnClickedConditionok()
 	d[1]=m_d2;
 	d[2]=m_d3;
 	d[3]=m_d4;
-	Ratio=m_Ratio;
+	Ratio=m_Ratio/1000;
+	Cv=m_Cv;
 	Gain[0]=m_gain1;
 	Gain[1]=m_gain2;
 	Gain[2]=m_gain3;
@@ -174,10 +177,14 @@ BOOL CSetConditionDlg::OnInitDialog()
 		SetDlgItemText(IDC_ch1Dis,"FJ距离");
 		SetDlgItemText(IDC_ch2Dis,"FH距离");
 		SetDlgItemText(IDC_ch3Dis,"HJ距离");
+		SetDlgItemText(IDC_STATIC_g1,"J放大倍数");
+		SetDlgItemText(IDC_STATIC_g2,"H放大倍数");
 		GetDlgItem(IDC_ch4Dis)->EnableWindow(FALSE);
 		GetDlgItem(IDC_d4)->EnableWindow(FALSE);
 		GetDlgItem(IDC_S4)->EnableWindow(FALSE);
-		GetDlgItem(IDC_SD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_STATIC_g3)->EnableWindow(FALSE);
+		GetDlgItem(IDC_STATIC_g4)->EnableWindow(FALSE);
+		GetDlgItem(IDC_Gain3)->EnableWindow(FALSE);
 		GetDlgItem(IDC_Gain4)->EnableWindow(FALSE);
 	}
 	return TRUE;  // return TRUE unless you set the focus to a control

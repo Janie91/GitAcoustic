@@ -29,10 +29,11 @@ vector<vector<float>>Result(4,vector<float>(0));
 vector<vector<float>>MulSensity(4,vector<float>(0));
 vector<float> MeaAngle;
 float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
-bool isTimer[4]={false,false,false,false};
+bool isTimer[5]={false,false,false,false,false};
 bool isMeasure=true;
 ViSession rm,U2751;
 ViStatus st;
+
 //...end...
 
 // CMeasure dialog
@@ -114,6 +115,8 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 	 {
 		 viOpenDefaultRM(&rm);
 		 st=viOpen(rm,"USB0::0x0957::0x3D18::MY51380004::0::INSTR",VI_NULL,VI_NULL,&U2751);
+		 for(int i=0;i<3;i++)
+			 isChaChoose[i]=true;
 	 }
 	 if(ChooseItem==2||ChooseItem==3||ChooseItem==4)
 	 {
@@ -332,8 +335,8 @@ void CMeasure::OnBnClickedView()
 		viPrintf(U2751,"*cls\n");//开关矩阵
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		Sleep(100);
-		viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");
-		//连通301、107和203,发射换能器发，水听器收，互易换能器收
+		viPrintf(U2751,"ROUTe:CLOSe (@402,107,304)\n");
+		//连通402、107和304,发射换能器发，水听器收，互易换能器收
 		ScopeTrigger();
 		viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
 		autoScale(1,1,3);//调整第1个显示的是1通道，一共有3个通道，水听器接收的通道
@@ -415,7 +418,7 @@ void CMeasure::OnBnClickedStartmea()
 		meaStatus=MeasureSensity();
 		if(meaStatus==-1) 
 		{
-			SetDlgItemTextA(IDC_Show,"测量中止......");
+			SetDlgItemTextA(IDC_Show,"中止测量灵敏度......");
 			return;
 		}
 		SetTimer(1,1000,NULL);
@@ -452,7 +455,7 @@ void CMeasure::OnBnClickedStartmea()
 		meaStatus=MeasureResponse();
 		if(meaStatus==-1) 
 		{
-			SetDlgItemTextA(IDC_Show,"测量中止......");
+			SetDlgItemTextA(IDC_Show,"中止测量发送电压响应......");
 			return;
 		}
 		SetTimer(2,1000,NULL);
@@ -487,7 +490,7 @@ void CMeasure::OnBnClickedStartmea()
 		meaStatus=MeasureDir();
 		if(meaStatus==-1) 
 		{
-			SetDlgItemTextA(IDC_Show,"测量中止......");
+			SetDlgItemTextA(IDC_Show,"中止单频点指向性测量......");
 			return;
 		}
 		SetTimer(3,1000,NULL);
@@ -544,7 +547,7 @@ void CMeasure::OnBnClickedStartmea()
 		meaStatus=MeaMulDir();
 		if(meaStatus==-1) 
 		{
-			SetDlgItemTextA(IDC_Show,"测量中止......");
+			SetDlgItemTextA(IDC_Show,"中止多频点测量指向......");
 			return;
 		}
 		SetTimer(4,1000,NULL);
@@ -553,7 +556,7 @@ void CMeasure::OnBnClickedStartmea()
 		meaStatus=MeaHuyi();
 		if(meaStatus==-1) 
 		{
-			SetDlgItemTextA(IDC_Show,"测量中止......");
+			SetDlgItemTextA(IDC_Show,"中止互易法自动测量灵敏度......");
 			return;
 		}
 		SetTimer(5,1000,NULL);
@@ -567,13 +570,12 @@ void CMeasure::OnBnClickedStopmea()
 	// TODO: Add your control notification handler code here
 	isMeasure=false;
 	//CreateMulFrePulse(Fs,5000,1000,Bwid/1000,0.5,1);
-	huatu_muldir();
 }
 
 void CMeasure::OnBnClickedquitsys()
 {
 	// TODO: Add your control notification handler code here
-	for(int i=0;i<4;i++)
+	for(int i=0;i<5;i++)
 	{
 		if(isTimer[i]) KillTimer(i+1);
 	}
@@ -581,6 +583,8 @@ void CMeasure::OnBnClickedquitsys()
 	viClose(vig);
 	viClose(vidp);
 	viClose(vidg);
+	viClose(rm);
+	viClose(U2751);
 	OnCancel();//因为它是非模态对话框，自己重载了这个函数	
 }
 void CMeasure::PostNcDestroy()
@@ -669,89 +673,113 @@ void CMeasure::Onsave()
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("电压(V)"));
 		break;
+	case 5:
+		range.put_Item(_variant_t((long)1),_variant_t((long)1),
+			_variant_t("互易法测量灵敏度级"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)1),
+			_variant_t("频率（kHz)"));
+		range.put_Item(_variant_t((long)2),_variant_t((long)2),
+				_variant_t("灵敏度级(dB)"));
+		break;
 
 	}
-	
-	///debug
-	//float Result[10]={-210.7,-210.6,-218.1,-217.6,-215.8,
-	//				-214.9,-215.3,-215.4,-215.9,-217.0};
-	//for(int i=0;i<10;i++)
-	//{
-	//	range.put_Item(_variant_t((long)(i+2)),_variant_t((long)1),
-	//		_variant_t(i+1));
-	//	//设置i+2排的第2列数据
-	//	range.put_Item(_variant_t((long)(i+2)),_variant_t((long)2),
-	//		_variant_t(Result[i]));
-	//}
-	///debug
+
 	int col=1;//有多列的时候
-	for(int i=0;i<4;i++)
+	if(ChooseItem==5)
 	{
-		if(isChaChoose[i])
+		if(OneThird_f)
 		{
-			if(ChooseItem==4)//多频点测指向性
+			for(unsigned int j=0;j<Result[0].size();j++)
 			{
-				for(int j=0;j<PulseCount;j++)
+				range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
+					_variant_t(OneThirdFreq[OTFreq+j]));
+				//设置j+3排的第2列数据或第3列……
+				range.put_Item(_variant_t((long)(j+3)),_variant_t((long)2),
+					_variant_t(Result[0][j]));
+			}
+		}
+		else
+		{
+			for(unsigned int j=0;j<Result[0].size();j++)
+			{
+				range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
+					_variant_t(startf+deltaf*j));
+				//设置j+3排的第2列数据或第3列……
+				range.put_Item(_variant_t((long)(j+3)),_variant_t((long)2),
+					_variant_t(Result[0][j]));
+			}
+		}
+	}
+	else
+	{
+		for(int i=0;i<4;i++)
+		{
+			if(isChaChoose[i])
+			{
+				if(ChooseItem==4)//多频点测指向性
 				{
-					if(Result[j].size()==0)continue;
-					for(unsigned int k=0;k<Result[j].size();k++)
+					for(int j=0;j<PulseCount;j++)
 					{
-						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)1),
-						_variant_t(MeaAngle[k]));
-						//设置k+3排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+2)),
-						_variant_t(Result[j][k]));
+						if(Result[j].size()==0)continue;
+						for(unsigned int k=0;k<Result[j].size();k++)
+						{
+							range.put_Item(_variant_t((long)(k+3)),_variant_t((long)1),
+							_variant_t(MeaAngle[k]));
+							//设置k+3排的第2列数据或第3列……
+							range.put_Item(_variant_t((long)(k+3)),_variant_t((long)(2*j+2)),
+							_variant_t(Result[j][k]));
+						}
 					}
 				}
-			}
-			else if(ChooseItem==0&&MeaCount>1)//灵敏度多次测量
-			{
-				if(MulSensity[i].size()==0) continue;
-				unsigned int sz=MulSensity[i].size()/MeaCount;
-				for(int c=0;c<MeaCount;c++)
+				else if(ChooseItem==0&&MeaCount>1)//灵敏度多次测量
 				{
-					col++;
-					for(unsigned int j=0;j<sz;j++)
+					if(MulSensity[i].size()==0) continue;
+					unsigned int sz=MulSensity[i].size()/MeaCount;
+					for(int c=0;c<MeaCount;c++)
 					{
-						if(col==2)
+						col++;
+						for(unsigned int j=0;j<sz;j++)
 						{
+							if(col==2)
+							{
+								range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
+								_variant_t(startf+deltaf*j));
+							}
+							//设置j+3排的第2列数据或第3列……
+							range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
+							_variant_t(MulSensity[i][j+c*sz]));
+						}
+					}
+				}
+				else
+				{
+					if(Result[i].size()==0)continue;
+					col++;
+					for(unsigned int j=0;j<Result[i].size();j++)
+					{
+						//设置j+3排的第1列数据
+						switch(ChooseItem)
+						{
+						case 0:
+						case 1:
 							range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
 							_variant_t(startf+deltaf*j));
-						}
-						//设置j+3排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
-						_variant_t(MulSensity[i][j+c*sz]));
-					}
-				}
-			}
-			else
-			{
-				if(Result[i].size()==0)continue;
-				col++;
-				for(unsigned int j=0;j<Result[i].size();j++)
-				{
-					//设置j+3排的第1列数据
-					switch(ChooseItem)
-					{
-					case 0:
-					case 1:
-						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
-						_variant_t(startf+deltaf*j));
-						//设置j+3排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
-						_variant_t(Result[i][j]));
-						break;
-					case 2:
-					case 3:
-						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
-						_variant_t(MeaAngle[j]));
-						//设置j+3排的第2列数据或第3列……
-						range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
-						_variant_t(Result[i][j]));
-						break;
+							//设置j+3排的第2列数据或第3列……
+							range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
+							_variant_t(Result[i][j]));
+							break;
+						case 2:
+						case 3:
+							range.put_Item(_variant_t((long)(j+3)),_variant_t((long)1),
+							_variant_t(MeaAngle[j]));
+							//设置j+3排的第2列数据或第3列……
+							range.put_Item(_variant_t((long)(j+3)),_variant_t((long)col),
+							_variant_t(Result[i][j]));
+							break;
 
-					}			
+						}			
 		
+					}
 				}
 			}
 		}
@@ -790,6 +818,8 @@ void CMeasure::OnTimer(UINT_PTR nIDEvent)
 		isTimer[2]=true;break;
 	case 4:
 		huatu_muldir();isTimer[3]=true;break;
+	case 5:
+		huatu_huyi();isTimer[4]=true;break;
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -878,7 +908,7 @@ int CMeasure::MeasureSensity()
 			stemp.Format("正在进行第 %d 次测量，请稍候......",c+1);
 			SetDlgItemTextA(IDC_Show,stemp);
 		}
-		else SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
+		else SetDlgItemTextA(IDC_Show,"正在测量灵敏度，请稍候......");
 		while(isMeasure&&f<=endf)
 		{
 			//用来接收“停止测量”按钮按下的消息
@@ -1041,7 +1071,7 @@ int CMeasure::MeasureResponse()
 		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
-	SetDlgItemTextA(IDC_Show,"开始测量，请稍候......");
+	SetDlgItemTextA(IDC_Show,"正在测量发送电压响应，请稍候......");
 	f=startf;
 	isMeasure=true;
 	while(isMeasure&&f<=endf)
@@ -1260,7 +1290,7 @@ int CMeasure::MeasureDir()
 	}//等待转到指定角度完成
 	 
 	viPrintf(vip,":run\n");
-	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
+	SetDlgItemTextA(IDC_Show,"正在进行单频点指向性测量，请稍候......");
 	clock_t t_start=clock();
 	viPrintf(vip,":timebase:mode window\n");
 	
@@ -1685,7 +1715,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	}
 	SetDlgItemTextA(IDC_showPara,stemp);
 	viPrintf(vip,":run\n");
-	SetDlgItemTextA(IDC_Show,"正在测量，请稍候......");
+	SetDlgItemTextA(IDC_Show,"正在进行多频点指向性测量，请稍候......");
 	viPrintf(vip,":timebase:mode window\n");
 	clock_t t_start=clock();
 	angle=MeaReadCurrentAngle();	
@@ -1902,6 +1932,7 @@ void CMeasure::huatu_muldir()
 
 int CMeasure::MeaHuyi()
 {
+	SetDlgItemTextA(IDC_Show,"准备测量，请稍候......");
 	float UI[3]={0,0,0};
 	if(st!=0)
 	{
@@ -1913,43 +1944,50 @@ int CMeasure::MeaHuyi()
 	viClear(U2751);
 	viPrintf(U2751,"*RST\n");//开关矩阵复位
 	viPrintf(U2751,"*CLS\n");//开关矩阵
-	viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");//发射发，互易和水听器收
+	viPrintf(U2751,"ROUTe:CLOSe (@402,107,304)\n");//发射发，互易和水听器收
 	float Mp=-1;
 	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
-	//功放连接R3，发射连接C1，互易连接C3（示波器CH2连接R2），
+	//功放连接R4，发射连接C2，互易连接C4（示波器CH2连接R3），
 	//水听器连接C7（示波器CH1连接R1），示波器CH3接的是电流计
 	viPrintf(vip,":timebase:mode window\n");
 	
 	CString s;
 	//发射发，水听器通道
-	s.Format("完成选择通道1的测量区域后点击确定");
+	s.Format("完成选择通道1(发-听)的测量区域后点击确定");
 	MessageBox(s);
 	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[0]);
 	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[0]);
 	//发射发，互易换能器通道
-	s.Format("完成选择通道2的测量区域后点击确定");
+	s.Format("完成选择通道2(发-互)的测量区域后点击确定");
 	MessageBox(s);
 	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[1]);
 	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[1]);
 	//发射发，电流通道，假设互易发也用这个区间
-	s.Format("完成选择通道3的测量区域后点击确定");
+	s.Format("完成选择通道3(电流计)的测量区域后点击确定");
 	MessageBox(s);
 	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[2]);
 	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[2]);
 	//互易发，水听器通道
-	viPrintf(U2751,"ROUTe:OPEN (@301,203)\n");//关掉发射和互易收
-	viPrintf(U2751,"ROUTe:CLOSe (@303)\n");//互易发
-	s.Format("完成选择通道1的测量区域后点击确定");
+	viPrintf(U2751,"ROUTe:OPEN (@402,304)\n");//关掉发射和互易收
+	viPrintf(U2751,"ROUTe:CLOSe (@404)\n");//互易发
+	s.Format("完成选择通道1(互-听)的测量区域后点击确定");
 	MessageBox(s);
 	viQueryf(vip,":timebase:window:position?\n","%f\n",&zoomPosition[3]);
 	viQueryf(vip,":timebase:window:range?\n","%f\n",&zoomRange[3]);
 
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
-	if(MessageBox("参数设置完成?是否开始测量？","提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	CString stemp;
+	stemp.Format("互易法自动测量灵敏度：\r\n频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n",
+	startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	SetDlgItemTextA(IDC_showPara,stemp);
 	f=startf;
 	isMeasure=true;
+	
+	SetDlgItemTextA(IDC_Show,"正在进行互易法自动测量灵敏度，请稍候......");
+	int count_OTFreq=0;
 	while(isMeasure&&f<=endf)
 	{
 		//用来接收“停止测量”按钮按下的消息
@@ -1961,43 +1999,47 @@ int CMeasure::MeaHuyi()
 			TranslateMessage (&msg) ;          
 			DispatchMessage (&msg) ;          
 		} 
-
 		viPrintf(vip,":run\n");
 		viPrintf(U2751,"*RST\n");//开关矩阵复位
 		viPrintf(U2751,"*CLS\n");//开关矩阵
-		viPrintf(U2751,"ROUTe:CLOSe (@301,107,203)\n");//连通301和107,203
+		viPrintf(U2751,"ROUTe:CLOSe (@402,107,304)\n");//发射发，水听器收，互易收
 		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
 		viPrintf(vip,":timebase:mode window\n");
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
 		viPrintf(vip,":measure:source channel%d\n",1);
-		u[0]=autoV(1);//uFJ
+		u[0]=autoV(1)/Gain[0];//uFJ
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
 		viPrintf(vip,":measure:source channel%d\n",3);
-		UI[0]=autoV(3);//iFJ
+		UI[0]=autoV(3)*Cv;//iFJ
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[1]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[1]);
 		viPrintf(vip,":measure:source channel%d\n",2);
-		u[1]=autoV(2);//uFH
+		u[1]=autoV(2)/Gain[1];//uFH
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
 		viPrintf(vip,":measure:source channel%d\n",3);
-		UI[1]=autoV(3);//iFH
-		viPrintf(U2751,"ROUTe:OPEN (@301,203)\n");
-		viPrintf(U2751,"ROUTe:CLOSe (@303)\n");
+		UI[1]=autoV(3)*Cv;//iFH
+		viPrintf(U2751,"ROUTe:OPEN (@402,304)\n");
+		viPrintf(U2751,"ROUTe:CLOSe (@404)\n");
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[3]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[3]);
 		viPrintf(vip,":measure:source channel%d\n",1);
-		u[2]=autoV(1);//uHJ
+		u[2]=autoV(1)/Gain[0];//uHJ
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
 		viPrintf(vip,":measure:source channel%d\n",3);
-		UI[2]=autoV(3);//iHJ
-		float M_j=(float)sqrt(u[0]*u[2]*UI[1]*d[0]*d[2]/(UI[0]*UI[2]*u[1]*d[1]*f*1000*5)*exp(d[0]+d[2]-d[1]));
+		UI[2]=autoV(3)*Cv;//iHJ
+		float M_j=(float)sqrt((u[0]/UI[0])*(u[2]/UI[2])/(u[1]/UI[1])*(d[0]*d[2]/d[1])*(2/(f*1000))*exp(d[0]+d[2]-d[1]));
 		Result[0].push_back(M_j);//水听器接在示波器1通道上
 		huatu_huyi();
-		f+=deltaf;
+		if(OneThird_f)
+		{
+			count_OTFreq++;
+			f=OneThirdFreq[OTFreq+count_OTFreq];
+		}
+		else f+=deltaf;
 	}
 
 	viPrintf(vip,":timebase:mode main\n");
@@ -2027,14 +2069,14 @@ void CMeasure::huatu_huyi()
 		if(endf==startf)
 		{
 			str.Format("%d",(int)(startf+x));
-			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
+			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
 		}
 		else
 		{
 			if((int)(startf+(endf-startf)/50*x)==temp) continue;
 			temp=(int)(startf+(endf-startf)/50*x);
 			str.Format("%d",temp);
-			pDC->TextOutA((int)(x*deltaX),rect.top+5,str);
+			pDC->TextOutA((int)(x*deltaX),rect.top-15,str);
 		}
 	}
 	for(y=0;y<=100;y+=10)
@@ -2066,7 +2108,7 @@ void CMeasure::huatu_huyi()
 		}
 
 	}
-	pDC->SelectObject(pOldPen);
+	pDC->SelectObject(pOldPen);	
 }
 void CMeasure::MeaSetManual()
 {

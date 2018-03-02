@@ -18,11 +18,11 @@ CSetSigDlg::CSetSigDlg(CWnd* pParent /*=NULL*/)
 	m_startF = startf;
 	m_endF = endf;
 	m_deltaF = deltaf;
-	
+	if(OneThird_f) m_OneThirdFreq.SetCheck(1);
 	m_volt = v;
 	m_pulseWid = Bwid;
 	m_pulseRe = Brep;
-	
+		
 }
 
 CSetSigDlg::~CSetSigDlg()
@@ -39,6 +39,7 @@ void CSetSigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_Volt, m_volt);
 	DDX_Text(pDX, IDC_PulseRep, m_pulseRe);
 	DDX_Text(pDX, IDC_PulseWid, m_pulseWid);
+	DDX_Control(pDX, IDC_OneThirdFreq, m_OneThirdFreq);
 }
 
 
@@ -74,6 +75,24 @@ void CSetSigDlg::OnBnClickedSigok()
 	startf=m_startF;
 	endf=m_endF;
 	deltaf=m_deltaF;
+	OneThird_f=(m_OneThirdFreq.GetCheck()==BST_CHECKED)? true:false;
+	if(OneThird_f) 
+	{
+		for(unsigned int i=0;i<31;i++)
+		{
+			if(abs(OneThirdFreq[i]-f)<0.001) 
+			{
+				OTFreq=i;
+				break;
+			}
+		}
+		if(OTFreq==0) 
+		{
+			AfxMessageBox("起始频率不是三分之一倍频程！");
+			return ;
+		}
+	}
+	
 	v=m_volt;
 	Bwid=m_pulseWid;
 	Brep=m_pulseRe;

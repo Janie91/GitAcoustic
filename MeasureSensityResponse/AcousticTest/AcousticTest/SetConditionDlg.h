@@ -34,4 +34,5 @@ public:
 	int m_gain4;
 	virtual BOOL OnInitDialog();
 	CComboBox m_MeaCount;
+	float m_Cv;
 };

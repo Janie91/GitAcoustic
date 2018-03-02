@@ -13,10 +13,16 @@ float d[4]={1.0,1.0,1.0,1.0};
 float u[4]={-1.0,-1.0,-1.0,-1.0};
 map<float,float> standMp;
 CString strDirFile="";
-int Ratio=100,Gain[4]={1,1,1,1},MeaCount=1;
+int Ratio=10,Gain[4]={1,1,1,1},MeaCount=1;
+float Cv=0.1f;
 int Speed=480,StartAngle=-90,EndAngle=90;
 bool isChange=false;
 int PulseCount=4;
+float OneThirdFreq[31]={2,2.5f,3.15f,4,5,6.3f,8,10,12.5f,
+	16,20,25,31.5f,40,50,63,80,100,125,160,200,250,
+	315,400,500,630,800,1000,1250,1600,2000};
+bool OneThird_f=false;
+unsigned int OTFreq=0;
 void CreateBurst(float f,float v,float wid,float perio)
 {
 	float ncyd=f*wid;

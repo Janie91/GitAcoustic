@@ -20,9 +20,13 @@ extern float u[4];
 extern map<float,float> standMp;
 extern CString strDirFile;
 extern int Ratio,Gain[4],MeaCount;
+extern float Cv;
 extern int Speed,StartAngle,EndAngle;
 extern bool isChange;
 extern int PulseCount;
+extern float OneThirdFreq[31];
+extern bool OneThird_f;
+extern unsigned int OTFreq;
 
 extern void CreateBurst(float f,float v,float wid,float perio);
 extern float CalSensity(float mp,float ux,float up,float dx,float dp);
