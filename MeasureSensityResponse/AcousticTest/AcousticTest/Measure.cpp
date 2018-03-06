@@ -32,7 +32,6 @@ float zoomPosition[4]={-1,-1,-1,-1},zoomRange[4]={-1,-1,-1,-1};
 bool isTimer[5]={false,false,false,false,false};
 bool isMeasure=true;
 ViSession rm,U2751;
-ViStatus st;
 
 //...end...
 
@@ -114,7 +113,7 @@ BOOL CMeasure::OnInitDialog()//加载对话框时的初始化函数
 	 if(ChooseItem==5)
 	 {
 		 viOpenDefaultRM(&rm);
-		 st=viOpen(rm,"USB0::0x0957::0x3D18::MY51380004::0::INSTR",VI_NULL,VI_NULL,&U2751);
+		 status=viOpen(rm,"USB0::0x0957::0x3D18::MY51380004::0::INSTR",VI_NULL,VI_NULL,&U2751);
 		 for(int i=0;i<3;i++)
 			 isChaChoose[i]=true;
 	 }
@@ -262,37 +261,56 @@ float autoV(int chann)
 	float vrange=-1,vtemp=-1;
 	int flag=0;
 	
-	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
 	viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 	
-	while(vtemp==-1||vrange==-1)
+	while(vtemp==-1||vrange==-1||vtemp==0||vrange==0)
 	{
 		if(flag>2) break;
 		flag++;
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+	}
+
+	while(vtemp>9.0e+036) 
+	{
+		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
 	}
 	while(vtemp>vrange/8.0*4) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+	}
+	while(vtemp>9.0e+036) 
+	{
+		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
 	}
 	//波形显示小于一格
-	while(vtemp<vrange/8.0)
+	while(vtemp<vrange/16.0)
 	{
 		if(vrange/2<0.016) 
 		{
 			viPrintf(vip,":channel%d:range 0.016\n",chann);
 			viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-			viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+			viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
 			break;
 		}
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
 	}
-	viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);//有效值不受尖刺波的影响
+	while(vtemp>9.0e+036) 
+	{
+		viPrintf(vip,":channel%d:range %f\n",chann,vrange*2);
+		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
+		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+	}
+	//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);//有效值不受尖刺波的影响
 	return vtemp;
 }
 void CMeasure::OnBnClickedView()
@@ -322,7 +340,7 @@ void CMeasure::OnBnClickedView()
 	}
 	if(ChooseItem==5)
 	{
-		if(st!=0)
+		if(status!=0)
 		{
 			AfxMessageBox("开关矩阵连通不正确！");
 			viClose(U2751);
@@ -583,8 +601,6 @@ void CMeasure::OnBnClickedquitsys()
 	viClose(vig);
 	viClose(vidp);
 	viClose(vidg);
-	viClose(rm);
-	viClose(U2751);
 	OnCancel();//因为它是非模态对话框，自己重载了这个函数	
 }
 void CMeasure::PostNcDestroy()
@@ -597,6 +613,8 @@ void CMeasure::PostNcDestroy()
 void CMeasure::OnCancel()
 {
 	// TODO: Add your specialized code here and/or call the base class
+	viClose(U2751);
+	viClose(rm);
 	CWnd::DestroyWindow();
 }
 void CMeasure::Onsave()
@@ -1934,7 +1952,7 @@ int CMeasure::MeaHuyi()
 {
 	SetDlgItemTextA(IDC_Show,"准备测量，请稍候......");
 	float UI[3]={0,0,0};
-	if(st!=0)
+	if(status!=0)
 	{
 		AfxMessageBox("开关矩阵连通不正确！");
 		viClose(U2751);
@@ -1979,7 +1997,7 @@ int CMeasure::MeaHuyi()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("互易法自动测量灵敏度：\r\n频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n",
+	stemp.Format("\r\n\r\n互易法自动测量灵敏度：\r\n频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n",
 	startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
@@ -2012,7 +2030,7 @@ int CMeasure::MeaHuyi()
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
 		viPrintf(vip,":measure:source channel%d\n",3);
-		UI[0]=autoV(3)*Cv;//iFJ
+		UI[0]=autoV(3)/Cv;//iFJ
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[1]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[1]);
 		viPrintf(vip,":measure:source channel%d\n",2);
@@ -2020,7 +2038,7 @@ int CMeasure::MeaHuyi()
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
 		viPrintf(vip,":measure:source channel%d\n",3);
-		UI[1]=autoV(3)*Cv;//iFH
+		UI[1]=autoV(3)/Cv;//iFH
 		viPrintf(U2751,"ROUTe:OPEN (@402,304)\n");
 		viPrintf(U2751,"ROUTe:CLOSe (@404)\n");
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[3]);
@@ -2030,8 +2048,11 @@ int CMeasure::MeaHuyi()
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[2]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[2]);
 		viPrintf(vip,":measure:source channel%d\n",3);
-		UI[2]=autoV(3)*Cv;//iHJ
-		float M_j=(float)sqrt((u[0]/UI[0])*(u[2]/UI[2])/(u[1]/UI[1])*(d[0]*d[2]/d[1])*(2/(f*1000))*exp(d[0]+d[2]-d[1]));
+		UI[2]=autoV(3)/Cv;//iHJ
+		/*float M_j=(float)(0.5*(20*log10(u[0]/UI[0])+20*log10(u[2]/UI[2])-20*log10(u[1]/UI[1])
+			+20*log10(d[0]*d[2]/d[1])+(-54-20*log10(f*1000))+20*log10(exp(0.0005*(d[0]+d[2]-d[1])))))-120;*/
+		float M_j=20*log10(sqrt((u[0]/UI[0])*(u[2]/UI[2])/(u[1]/UI[1])*(d[0]*d[2]/d[1])*(2/(1000*f*1000))*exp(0.0005f*(d[0]+d[2]-d[1]))))-120;
+		//公式中的ruo=1000kg/m3,alpha=0.0005
 		Result[0].push_back(M_j);//水听器接在示波器1通道上
 		huatu_huyi();
 		if(OneThird_f)
@@ -2053,6 +2074,11 @@ void CMeasure::huatu_huyi()
 	CRect rect;
 	pWnd->GetClientRect(rect);
 	CDC* pDC=pWnd->GetDC();
+	CBrush rebrush;
+	rebrush.CreateSolidBrush (RGB(255,255,255));//白色刷子
+	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
+	pDC->Rectangle (rect);//清空picture中的绘画
+	pDC->SelectObject (pOldBrush);
 	CPen pNewPen;
 	pNewPen.CreatePen(PS_SOLID,1,RGB(0,0,0));
 	CPen* pOldPen=pDC->SelectObject(&pNewPen);
@@ -2094,12 +2120,20 @@ void CMeasure::huatu_huyi()
 	{
 		if(endf!=startf)
 		{
-			pDC->MoveTo(0,-(int)((Result[0][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
-			for(unsigned int i=1;i<Result[0].size();i++)
+			if(Result[0].size()==1)
 			{
-				x=(int)(i*deltaf*deltaX*50/(endf-startf));
-				y=-(int)((Result[0][i]+150)*deltaY);
-				pDC->LineTo(x,y);//连接两个点
+				pDC->SetPixel(0,-(int)((Result[0][0]+150)*deltaY),RGB(255,0,0));
+			}
+			else
+			{
+				pDC->MoveTo(0,-(int)((Result[0][0]+150)*deltaY));//将画笔移到起点，灵敏度值是负的，画图向下是正的
+				for(unsigned int i=1;i<Result[0].size();i++)
+				{
+
+					x=(int)((OneThirdFreq[OTFreq+i]-startf)*50/(endf-startf)*deltaX);
+					y=-(int)((Result[0][i]+150)*deltaY);
+					pDC->LineTo(x,y);//连接两个点
+				}
 			}
 		}
 		else

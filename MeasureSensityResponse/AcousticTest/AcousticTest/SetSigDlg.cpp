@@ -18,7 +18,6 @@ CSetSigDlg::CSetSigDlg(CWnd* pParent /*=NULL*/)
 	m_startF = startf;
 	m_endF = endf;
 	m_deltaF = deltaf;
-	if(OneThird_f) m_OneThirdFreq.SetCheck(1);
 	m_volt = v;
 	m_pulseWid = Bwid;
 	m_pulseRe = Brep;
@@ -117,4 +116,15 @@ void CSetSigDlg::OnBnClickedCancel()
 		return;
 	}
 	CDialogEx::OnCancel();
+}
+
+
+BOOL CSetSigDlg::OnInitDialog()
+{
+	CDialogEx::OnInitDialog();
+
+	// TODO:  在此添加额外的初始化
+	if(OneThird_f) m_OneThirdFreq.SetCheck(1);
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// 异常: OCX 属性页应返回 FALSE
 }
