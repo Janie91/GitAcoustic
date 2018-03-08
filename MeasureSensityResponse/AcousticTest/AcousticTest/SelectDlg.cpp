@@ -8,7 +8,7 @@
 
 //...My code...
 #include "MyFunction.h"
-#include "Measure.h"
+
 //...end...
 // CSelectDlg dialog
 
@@ -19,6 +19,7 @@ CSelectDlg::CSelectDlg(CWnd* pParent /*=NULL*/)
 {
 
 	m_Item = 0;
+	mdlg=NULL;
 }
 
 CSelectDlg::~CSelectDlg()
@@ -46,8 +47,8 @@ BOOL CSelectDlg::OnInitDialog()
 	CDialog::OnInitDialog();
 	
 	// TODO:  在此添加额外的初始化
-	//AfxGetMainWnd()->SendMessage(WM_CLOSE);//把选择测量项目的前一个进入系统的主对话框关闭
 	AfxGetMainWnd()->ShowWindow(SW_HIDE);//把选择测量项目的前一个进入系统的主对话框隐藏
+	ModifyStyleEx(WS_EX_TOOLWINDOW, WS_EX_APPWINDOW);//运行程序的时候可以显示图标
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
@@ -60,23 +61,29 @@ void CSelectDlg::OnBnClickedselect()
 	case 0:
 		ChooseItem=0;break;//比较法测灵敏度
 	case 1:
-		ChooseItem=1;break;//发射电压响应
+		ChooseItem=1;break;//发送电压响应
 	case 2:
-		ChooseItem=2;break;//单频点指向性
+		ChooseItem=2;break;//单频点接收指向性
 	case 3:
-		ChooseItem=3;break;//多频点指向性
+		ChooseItem=3;break;//单频点发射指向性
+	case 4:
+		ChooseItem=4;break;//多频点接收指向性
+	case 5:
+		ChooseItem=5;break;//互易法自动测量
 	}
-	CMeasure mdlg;
-	mdlg.DoModal();
-
+	mdlg=new CMeasure(this);//给指针分配内存
+	mdlg->Create(IDD_Measure);//创建一个非模态对话框
+	mdlg->CenterWindow();//显示在中间
+	mdlg->ShowWindow(SW_SHOW);//显示非模态对话框 
+	//this->ShowWindow(SW_HIDE);//将本对话框隐藏,就不知道怎么再打开了
 }
 
 
 void CSelectDlg::OnBnClickedselectquit()
 {
 	// TODO: Add your control notification handler code here
-	CDialog::OnCancel();
-	AfxGetMainWnd()->SendMessage(WM_CLOSE);
+	CDialog::OnCancel();//模态对话框，直接调用基类的函数	
+	AfxGetMainWnd()->SendMessage(WM_CLOSE);//关闭主对话框
 }
 
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "afxwin.h"
 
 
 // CSetSigDlg dialog
@@ -34,4 +35,6 @@ public:
 //	CComboBox m_unitV;
 	afx_msg void OnBnClickedSigok();
 	afx_msg void OnBnClickedCancel();
+	CButton m_OneThirdFreq;
+	virtual BOOL OnInitDialog();
 };

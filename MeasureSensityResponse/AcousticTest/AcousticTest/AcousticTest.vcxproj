@@ -99,17 +99,20 @@
     <None Include="ReadMe.txt" />
     <None Include="res\AcousticTest.ico" />
     <None Include="res\AcousticTest.rc2" />
+    <None Include="res\icon1.ico" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcousticTest.h" />
     <ClInclude Include="AcousticTestDlg.h" />
     <ClInclude Include="CApplication.h" />
+    <ClInclude Include="ChangeSig.h" />
     <ClInclude Include="CRange.h" />
     <ClInclude Include="CWorkbook.h" />
     <ClInclude Include="CWorkbooks.h" />
     <ClInclude Include="CWorksheet.h" />
     <ClInclude Include="CWorksheets.h" />
     <ClInclude Include="Measure.h" />
+    <ClInclude Include="mscomm.h" />
     <ClInclude Include="MyFunction.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SelectDlg.h" />
@@ -118,13 +121,16 @@
     <ClInclude Include="SetSigDlg.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TurnTable.h" />
     <ClInclude Include="visa.h" />
     <ClInclude Include="visatype.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AcousticTest.cpp" />
     <ClCompile Include="AcousticTestDlg.cpp" />
+    <ClCompile Include="ChangeSig.cpp" />
     <ClCompile Include="Measure.cpp" />
+    <ClCompile Include="mscomm.cpp" />
     <ClCompile Include="MyFunction.cpp" />
     <ClCompile Include="SelectDlg.cpp" />
     <ClCompile Include="SetConditionDlg.cpp" />
@@ -134,6 +140,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="TurnTable.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="AcousticTest.rc" />
@@ -146,7 +153,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties RESOURCE_FILE="AcousticTest.rc" />
+      <UserProperties RESOURCE_FILE="AcousticTest.rc" _x007B_648A5600-2C6E-101B-82B6-000000000014_x007D_="CMscomm" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

@@ -76,8 +76,12 @@ void CSetScopDlg::OnBnClickedScopok()
 
 	//if(m_ch4.GetCheck()==BST_CHECKED) isChaChoose[3]=true;
 	CString temp;
-	m_chRefer.GetLBText(m_chRefer.GetCurSel(),temp);
-	chaRefer=atoi(temp);
+	m_chRefer.GetLBText(m_chRefer.GetCurSel(),temp);	
+	if(isChaChoose[atoi(temp)-1]==false)
+	{
+		AfxMessageBox("参考通道不是以上选择的通道，请确认！");
+	}
+	else chaRefer=atoi(temp);
 	CDialog::OnOK();
 }
 
