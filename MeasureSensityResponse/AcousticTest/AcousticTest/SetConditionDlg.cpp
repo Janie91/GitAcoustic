@@ -74,7 +74,7 @@ void CSetConditionDlg::OnBnClickedConditionok()
 	d[1]=m_d2;
 	d[2]=m_d3;
 	d[3]=m_d4;
-	Ratio=m_Ratio/1000;
+	Ratio=m_Ratio;
 	Cv=m_Cv;
 	Gain[0]=m_gain1;
 	Gain[1]=m_gain2;
