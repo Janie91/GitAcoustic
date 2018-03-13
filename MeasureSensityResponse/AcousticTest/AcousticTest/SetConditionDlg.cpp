@@ -80,7 +80,7 @@ void CSetConditionDlg::OnBnClickedConditionok()
 	Gain[1]=m_gain2;
 	Gain[2]=m_gain3;
 	Gain[3]=m_gain4;
-	if(ChooseItem==0)
+	if(ChooseItem==0||ChooseItem==1)
 	{
 		CString temp;
 		m_MeaCount.GetLBText(m_MeaCount.GetCurSel(),temp);	
@@ -161,8 +161,8 @@ BOOL CSetConditionDlg::OnInitDialog()
 
 	// TODO:  Add extra initialization here
 	SetDlgItemText(IDC_standFile,strDirFile);
-	m_MeaCount.SetCurSel(MeaCount-1);
-	if(ChooseItem==0)
+	m_MeaCount.SetCurSel(0);
+	if(ChooseItem==0||ChooseItem==1)
 	{
 		GetDlgItem(IDC_SmeaCount)->EnableWindow(TRUE);
 		GetDlgItem(IDC_MeaCount)->EnableWindow(TRUE);

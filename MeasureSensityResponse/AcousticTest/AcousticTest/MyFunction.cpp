@@ -5,24 +5,25 @@
 ViSession vidg,vidp,vig,vip;
 long status=-1;
 int ChooseItem=0;
-float f=3.0,v=500.0,Bwid=2.0,Brep=0.5;
-float startf=3.0,endf=10.0,deltaf=1.0;
+float f=3000,v=500.0,Bwid=0.5,Brep=0.5;
+float startf=3000,endf=10000,deltaf=1000;
 bool isChaChoose[4]={false,false,false,false};
 int chaRefer=1;
-float d[4]={1.239f,1.272f,1.413f,1.0f};
+float d[4]={1.359f,1.272f,1.413f,1.0f};
 float u[4]={-1.0,-1.0,-1.0,-1.0};
 map<float,float> standMp;
 CString strDirFile="";
-int Ratio=10,Gain[4]={8,8,1,1},MeaCount=1;
+int Ratio=10,Gain[4]={8,8,8,8},MeaCount=1;
 float Cv=0.1f;
 int Speed=480,StartAngle=-90,EndAngle=90;
 bool isChange=false;
 int PulseCount=4;
-float OneThirdFreq[31]={2,2.5f,3.15f,4,5,6.3f,8,10,12.5f,
-	16,20,25,31.5f,40,50,63,80,100,125,160,200,250,
-	315,400,500,630,800,1000,1250,1600,2000};
+float OneThirdFreq[34]={1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,
+	16000,20000,25000,31500,40000,50000,63000,80000,100000,125000,160000,
+	200000,250000,315000,400000,500000,630000,800000,1000000,1250000,1600000,2000000};
 bool OneThird_f=false;
 unsigned int OTFreq=0;
+int Unit=-1;
 void CreateBurst(float f,float v,float wid,float perio)
 {
 	float ncyd=f*wid;
@@ -106,5 +107,14 @@ void CreateMulFrePulse(int fs,float f1,float delf,float wid,float v,float repeat
 	viPrintf(vig,"output:sync on\n");
 	viPrintf(vig,"output on\n");
 	
+}
+
+float LineP(float x0,float y0,float x1,float y1,float x)//线性插值函数
+{
+	float dx=x1-x0;
+	if(dx==0) return 0;
+	float k=(y1-y0)/dx;
+	float b=y1-k*x1;
+	return k*x+b;
 }
 

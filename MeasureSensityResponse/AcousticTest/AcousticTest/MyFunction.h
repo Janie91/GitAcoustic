@@ -24,15 +24,16 @@ extern float Cv;
 extern int Speed,StartAngle,EndAngle;
 extern bool isChange;
 extern int PulseCount;
-extern float OneThirdFreq[31];
+extern float OneThirdFreq[34];
 extern bool OneThird_f;
 extern unsigned int OTFreq;
+extern int Unit;
 
 extern void CreateBurst(float f,float v,float wid,float perio);
 extern float CalSensity(float mp,float ux,float up,float dx,float dp);
 extern float CalResponse(float mp,float ux,float up,float d);
 extern void ScopeTrigger();
 extern void CreateMulFrePulse(int fs,float f1,float deltaf,float wid,float v,float repeat);
-
+extern float LineP(float x0,float y0,float x1,float y1,float x);
 #endif
 

@@ -37,4 +37,7 @@ public:
 	afx_msg void OnBnClickedCancel();
 	CButton m_OneThirdFreq;
 	virtual BOOL OnInitDialog();
+	CComboBox m_StartfUnit;
+//	CComboBox m_EndfUnit;
+//	CComboBox m_DeltafUnit;
 };

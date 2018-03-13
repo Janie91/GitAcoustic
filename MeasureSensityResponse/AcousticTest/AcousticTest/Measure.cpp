@@ -264,6 +264,7 @@ float autoV(int chann)
 	int flag=0;
 	
 	viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+	//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 	
 	while(vtemp==-1||vrange==-1||vtemp==0||vrange==0)
@@ -272,6 +273,7 @@ float autoV(int chann)
 		flag++;
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 
 	while(vtemp>9.0e+036) 
@@ -279,18 +281,21 @@ float autoV(int chann)
 		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	while(vtemp>vrange/8.0*4) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	while(vtemp>9.0e+036) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	//波形显示小于一格
 	while(vtemp<vrange/16.0)
@@ -300,17 +305,20 @@ float autoV(int chann)
 			viPrintf(vip,":channel%d:range 0.016\n",chann);
 			viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 			viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+			//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 			break;
 		}
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	while(vtemp>9.0e+036) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange*2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);//有效值不受尖刺波的影响
 	return vtemp;
@@ -353,7 +361,7 @@ void CMeasure::OnBnClickedView()
 		viClear(U2751);
 		viPrintf(U2751,"*rst\n");//开关矩阵复位
 		viPrintf(U2751,"*cls\n");//开关矩阵
-		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+		CreateBurst(f,v/1000,Bwid/1000,Brep);
 		Sleep(100);
 		viPrintf(U2751,"ROUTe:CLOSe (@402,107,304)\n");
 		//连通402、107和304,发射换能器发，水听器收，互易换能器收
@@ -367,14 +375,14 @@ void CMeasure::OnBnClickedView()
 	{
 		if(ChooseItem==4)
 		{
-			CreateMulFrePulse(Fs,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);
+			CreateMulFrePulse(Fs,f,deltaf,Bwid/1000,v/1000,Brep);
 			Sleep(100);
 			ScopeTrigger();
 			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*6*PulseCount);//设置时间轴代表的时间长度
 		}
 		else 
 		{
-			CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+			CreateBurst(f,v/1000,Bwid/1000,Brep);
 			Sleep(100);
 			ScopeTrigger();
 			viPrintf(vip,"timebase:range %f\n",(Bwid/1000.0)*4);//设置时间轴代表的时间长度
@@ -411,7 +419,7 @@ void CMeasure::OnBnClickedStartmea()
 			AfxMessageBox("请选择标准水听器文件！");
 			return;
 		}
-		if(startf*1000<(standMp.begin()->first)||endf*1000>(standMp.rbegin()->first))
+		if(startf<(standMp.begin()->first)||endf>(standMp.rbegin()->first))
 		{
 			AfxMessageBox("测量频率范围超过标准水听器的范围！");
 			return;
@@ -468,7 +476,7 @@ void CMeasure::OnBnClickedStartmea()
 							else minf=startf+i*deltaf;
 						}
 					}
-					s.Format("最大灵敏度级\r\n  %.2fdB @ %.2fkHz\r\n最小灵敏度级\r\n  %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
+					s.Format("最大灵敏度级\r\n  %.2fdB @ %.2fHz\r\n最小灵敏度级\r\n  %.2fdB @ %.2fHz",maxm,maxf,minm,minf);
 					strshow+=s;
 				}				
 			}
@@ -484,30 +492,33 @@ void CMeasure::OnBnClickedStartmea()
 		}
 		SetTimer(2,1000,NULL);
 		GetDlgItemTextA(IDC_showPara,strshow);
-		for(int ch=0;ch<4;ch++)
+		if(MeaCount==1)
 		{
-			if(isChaChoose[ch]&&ch!=chaRefer-1)
+			for(int ch=0;ch<4;ch++)
 			{
-				CString s;
-				s.Format("\r\n发送电压响应测量结果：\r\n待测发射换能器通道 %d通道r\n",ch+1);
-				strshow+=s;
-				float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
-				for(unsigned int i=1;i<Result[ch].size();i++)
+				if(isChaChoose[ch]&&ch!=chaRefer-1)
 				{
-					if(maxm<Result[ch][i]) {
-						maxm=Result[ch][i];
-						maxf=startf+i*deltaf;
+					CString s;
+					s.Format("\r\n发送电压响应测量结果：\r\n待测发射换能器通道 %d通道\r\n",ch+1);
+					strshow+=s;
+					float maxf=startf,maxm=Result[ch][0],minf=startf,minm=Result[ch][0];
+					for(unsigned int i=1;i<Result[ch].size();i++)
+					{
+						if(maxm<Result[ch][i]) {
+							maxm=Result[ch][i];
+							maxf=startf+i*deltaf;
+						}
+						if(minm>Result[ch][i]) {
+							minm=Result[ch][i];
+							minf=startf+i*deltaf;
+						}
 					}
-					if(minm>Result[ch][i]) {
-						minm=Result[ch][i];
-						minf=startf+i*deltaf;
-					}
-				}
-				s.Format("最大发送电压响应级\r\n  %.2fdB @ %.2fkHz\r\n最小发送电压响应级\r\n  %.2fdB @ %.2fkHz",maxm,maxf,minm,minf);
-				strshow+=s;
-			}				
+					s.Format("最大发送电压响应级\r\n  %.2fdB @ %.2fHz\r\n最小发送电压响应级\r\n  %.2fdB @ %.2fHz",maxm,maxf,minm,minf);
+					strshow+=s;
+				}				
+			}
+			SetDlgItemTextA(IDC_showPara,strshow);
 		}
-		SetDlgItemTextA(IDC_showPara,strshow);
 		break;
 	case 2://测量接收指向性
 	case 3://测量发射指向性
@@ -670,7 +681,7 @@ void CMeasure::Onsave()
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
 			_variant_t("比较法测量灵敏度级"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)1),
-			_variant_t("频率（kHz)"));
+			_variant_t("频率（Hz)"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("灵敏度级(dB)"));
 		break;
@@ -678,7 +689,7 @@ void CMeasure::Onsave()
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
 			_variant_t("比较法测量发射电压响应级"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)1),
-			_variant_t("频率（kHz)"));
+			_variant_t("频率（Hz)"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("发射电压响应级(dB)"));
 		break;
@@ -710,7 +721,7 @@ void CMeasure::Onsave()
 		range.put_Item(_variant_t((long)1),_variant_t((long)1),
 			_variant_t("互易法测量灵敏度级"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)1),
-			_variant_t("频率（kHz)"));
+			_variant_t("频率（Hz)"));
 		range.put_Item(_variant_t((long)2),_variant_t((long)2),
 				_variant_t("灵敏度级(dB)"));
 		break;
@@ -764,7 +775,7 @@ void CMeasure::Onsave()
 						}
 					}
 				}
-				else if(ChooseItem==0&&MeaCount>1)//灵敏度多次测量
+				else if((ChooseItem==0||ChooseItem==1)&&MeaCount>1)//灵敏度和发送响应多次测量
 				{
 					if(MulSensity[i].size()==0) continue;
 					unsigned int sz=MulSensity[i].size()/MeaCount;
@@ -911,7 +922,7 @@ int CMeasure::MeasureSensity()
 {
 	SetDlgItemTextA(IDC_Show,"准备测量，请稍候......");
 	float Mp=-1;
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	CreateBurst(f,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -928,7 +939,7 @@ int CMeasure::MeasureSensity()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n测量次数 %d次\r\n标准水听器通道 %d",
+	stemp.Format("频率范围 %.1fHz~%.1fHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n测量次数 %d次\r\n标准水听器通道 %d",
 		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
@@ -964,7 +975,7 @@ int CMeasure::MeasureSensity()
 			} 
 
 			viPrintf(vip,":run\n");
-			CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+			CreateBurst(f,v/1000,Bwid/1000,Brep);
 			viPrintf(vip,":timebase:mode window\n");
 			for(int i=0;i<4;i++)
 			{
@@ -980,10 +991,13 @@ int CMeasure::MeasureSensity()
 			{
 				if(!isChaChoose[i]||i==chaRefer-1) continue;
 			
-				map<float,float>::iterator it=standMp.find(f*1000);
+				map<float,float>::iterator it=standMp.find(f);
 				if(it==standMp.end())
 				{
-					Mp=(standMp.lower_bound(f*1000)->second+standMp.upper_bound(f*1000)->second)/2;
+					//Mp=(standMp.lower_bound(f)->second+standMp.upper_bound(f)->second)/2;
+					//使用线性插值计算该频率点的灵敏度值
+					Mp=LineP(standMp.lower_bound(f)->first,standMp.lower_bound(f)->second,
+						standMp.upper_bound(f)->first,standMp.upper_bound(f)->second,f);
 				}
 				else
 					Mp=it->second;
@@ -1059,7 +1073,7 @@ void CMeasure::huatu_sensity()
 		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
 		pDC->TextOutA(rect.left-40,y*deltaY-10,str);
 	}
-	str.Format("频率(kHz)");
+	str.Format("频率(Hz)");
 	pDC->TextOutA(100,-50,str);
 	str.Format("灵");
 	pDC->TextOutA(-80,200,str);
@@ -1129,7 +1143,7 @@ int CMeasure::MeasureResponse()
 {
 	SetDlgItemTextA(IDC_Show,"准备测量，请稍候......");
 	float Mp=-1;
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	CreateBurst(f,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -1146,64 +1160,100 @@ int CMeasure::MeasureResponse()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("测量的频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
+	stemp.Format("测量的频率范围 %.1fHz~%.1fHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
 		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
-	SetDlgItemTextA(IDC_Show,"正在测量发送电压响应，请稍候......");
 	f=startf;
 	isMeasure=true;
-	unsigned int count_freq=0;
-	while(isMeasure&&f<=endf)
+	for(int c=0;isMeasure&&c<MeaCount;c++)
 	{
-		//用来接收“停止测量”按钮按下的消息
-		MSG  msg;
-		if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
-		{          
-			if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))  
-			{
-				isMeasure=false;
-				break ;
-			}
-			TranslateMessage (&msg) ;          
-			DispatchMessage (&msg) ;          
-		} 
-		viPrintf(vip,":run\n");
-		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
-		viPrintf(vip,":timebase:mode window\n");
+		f=startf;
 		for(int i=0;i<4;i++)
 		{
-			if(isChaChoose[i])
+			if(isChaChoose[i]) Result[i].clear();
+			u[i]=-1;
+		}
+		if(MeaCount>1)
+		{
+			stemp.Format("正在进行第 %d 次测量，请稍候......",c+1);
+			SetDlgItemTextA(IDC_Show,stemp);
+		}
+		else SetDlgItemTextA(IDC_Show,"正在测量发送电压响应，请稍候......");
+		unsigned int count_freq=0;
+		while(isMeasure&&f<=endf)
+		{
+			//用来接收“停止测量”按钮按下的消息
+			MSG  msg;
+			if (PeekMessage (&msg, NULL, 0, 0, PM_REMOVE))          
+			{          
+				if (msg.message == MAKEWPARAM(IDC_StopMea, BN_CLICKED))  
+				{
+					isMeasure=false;
+					break ;
+				}
+				TranslateMessage (&msg) ;          
+				DispatchMessage (&msg) ;          
+			} 
+			viPrintf(vip,":run\n");
+			CreateBurst(f,v/1000,Bwid/1000,Brep);
+			viPrintf(vip,":timebase:mode window\n");
+			for(int i=0;i<4;i++)
 			{
-				viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
-				viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
-				viPrintf(vip,":measure:source channel%d\n",i+1);
-				u[i]=autoV(i+1);
+				if(isChaChoose[i])
+				{
+					viPrintf(vip,":timebase:window:position %f\n",zoomPosition[i]);
+					viPrintf(vip,":timebase:window:range %f\n",zoomRange[i]);
+					viPrintf(vip,":measure:source channel%d\n",i+1);
+					u[i]=autoV(i+1);
+				}
 			}
+			for(int i=0;i<4;i++)
+			{
+				if(!isChaChoose[i]||i==chaRefer-1) continue;
+			
+				map<float,float>::iterator it=standMp.find(f);
+				if(it==standMp.end())
+				{
+					//Mp=(standMp.lower_bound(f)->second+standMp.upper_bound(f)->second)/2;
+					//使用线性插值计算该频率点的灵敏度值
+					float x0=0,y0=0,x1=0,y1=0;
+					for(it=standMp.begin();it!=standMp.end();it++)
+					{
+						if(it->first<f) 
+						{
+							x0=it->first;
+							y0=it->second;
+						}
+						if(it->first>f)
+						{
+							x1=it->first;
+							y1=it->second;
+							break;
+						}
+					}
+					
+					Mp=LineP(x0,y0,x1,y1,f);
+				}
+				else
+					Mp=it->second;
+				Result[i].push_back(CalResponse(Mp,u[i]*1000/Ratio,u[chaRefer-1]/Gain[chaRefer-1],d[chaRefer-1]));
+			
+			}
+			huatu_response();
+			if(OneThird_f)
+			{
+				count_freq++;
+				f=OneThirdFreq[OTFreq+count_freq];
+			}
+			else f+=deltaf;
 		}
 		for(int i=0;i<4;i++)
 		{
-			if(!isChaChoose[i]||i==chaRefer-1) continue;
-			
-			map<float,float>::iterator it=standMp.find(f*1000);
-			if(it==standMp.end())
-			{
-				Mp=(standMp.lower_bound(f*1000)->second+standMp.upper_bound(f*1000)->second)/2;
-			}
-			else
-				Mp=it->second;
-			Result[i].push_back(CalResponse(Mp,u[i]*1000/Ratio,u[chaRefer-1]/Gain[chaRefer-1],d[chaRefer-1]));
-			
+			if(isChaChoose[i]&&i!=chaRefer-1)
+				MulSensity[i].insert(MulSensity[i].end(),Result[i].begin(),Result[i].end());
 		}
-		huatu_response();
-		if(OneThird_f)
-		{
-			count_freq++;
-			f=OneThirdFreq[OTFreq+count_freq];
-		}
-		else f+=deltaf;
 	}
-
 	viPrintf(vip,":timebase:mode main\n");
 	return 0;
 }
@@ -1214,11 +1264,15 @@ void CMeasure::huatu_response()
 	CRect rect;
 	pWnd->GetClientRect(rect);
 	CDC* pDC=pWnd->GetDC();
-	CBrush rebrush;
-	rebrush.CreateSolidBrush (RGB(255,255,255));//白色刷子
-	CBrush *pOldBrush=pDC->SelectObject (&rebrush);
-	pDC->Rectangle (rect);//清空picture中的绘画
-	pDC->SelectObject (pOldBrush);
+	if(MeaCount>1);
+	else 
+	{
+		CBrush rebrush;
+		rebrush.CreateSolidBrush (RGB(255,255,255));//白色刷子
+		CBrush *pOldBrush=pDC->SelectObject (&rebrush);
+		pDC->Rectangle (rect);//清空picture中的绘画
+		pDC->SelectObject (pOldBrush);
+	}
 	CPen pNewPen;
 	pNewPen.CreatePen(PS_SOLID,1,RGB(0,0,0));
 	CPen* pOldPen=pDC->SelectObject(&pNewPen);
@@ -1254,7 +1308,7 @@ void CMeasure::huatu_response()
 		str.Format("%d",50+2*y);//纵轴表示50~250共200个点，而纵轴总共划分出了100格，所以每一格代表2y
 		pDC->TextOutA(rect.left-30,-y*deltaY-10,str);
 	}
-	str.Format("频率(kHz)");
+	str.Format("频率(Hz)");
 	pDC->TextOutA(400,30,str);
 	str.Format("发");
 	pDC->TextOutA(-80,-280,str);
@@ -1340,7 +1394,7 @@ int CMeasure::MeasureDir()
 	}
 	MeaSetManual();//设为手动
 	CString stemp;
-	stemp.Format("当前频率为 %.1fkHz\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d秒/圈\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
+	stemp.Format("当前频率为 %.1fHz\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d秒/圈\r\n重复周期 %.1fs",f,StartAngle,EndAngle,Speed,Brep);
 	if(MessageBox(stemp,"是否测量？",MB_OKCANCEL)==IDCANCEL) 
 	{
 		m_com.put_OutBufferCount(0);
@@ -1351,7 +1405,7 @@ int CMeasure::MeasureDir()
 	m_DirPic=0;
 	f=startf;
 	isMeasure=true;
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);//触发信号源
+	CreateBurst(f,v/1000,Bwid/1000,Brep);//触发信号源
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -1792,7 +1846,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 	MeaSetManual();//设为手动
 	f=startf;
 	isMeasure=true;
-	CreateMulFrePulse(Fs,f*1000,deltaf*1000,Bwid/1000,v/1000,Brep);//多频点信号
+	CreateMulFrePulse(Fs,f,deltaf,Bwid/1000,v/1000,Brep);//多频点信号
 	MessageBox("请根据提示选择各个通道各个频率的测量区域！");
 	viPrintf(vip,":timebase:mode window\n");
 	for(int i=0;i<4;i++)
@@ -1827,7 +1881,7 @@ int CMeasure::MeaMulDir()//只能用一个通道来测量，但是具体是哪个通道可以选择
 		angle=MeaReadCurrentAngle();
 	}//等待转到指定角度完成
 	CString stemp;
-	stemp.Format("起始频率为 %.1fkHz\r\n频率点数 %d\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d秒/圈\r\n重复周期 %.1fs",f,PulseCount,StartAngle,EndAngle,Speed,Brep);
+	stemp.Format("起始频率为 %.1fHz\r\n频率点数 %d\r\n测量的角度范围 %d°~%d°\r\n回转速度为 %d秒/圈\r\n重复周期 %.1fs",f,PulseCount,StartAngle,EndAngle,Speed,Brep);
 	if(MessageBox(stemp,"是否测量？",MB_OKCANCEL)==IDCANCEL) 
 	{
 		m_com.put_OutBufferCount(0);
@@ -2015,13 +2069,13 @@ void CMeasure::huatu_muldir()
 	str.Format("5dB/div");
 	pDC->TextOutA(-w/2+20,h/2-20,str);
 
-	str.Format("橙色——%.1fkHz指向性图",f);
+	str.Format("橙色——%.1fHz指向性图",f);
 	pDC->TextOutA(-w/2+10,h/2-100,str);
-	str.Format("绿色——%.1fkHz指向性图",f+deltaf);
+	str.Format("绿色——%.1fHz指向性图",f+deltaf);
 	pDC->TextOutA(-w/2+10,h/2-80,str);
-	str.Format("蓝色——%.1fkHz指向性图",f+2*deltaf);
+	str.Format("蓝色——%.1fHz指向性图",f+2*deltaf);
 	pDC->TextOutA(-w/2+10,h/2-60,str);
-	str.Format("红色——%.1fkHz指向性图",f+3*deltaf);
+	str.Format("红色——%.1fHz指向性图",f+3*deltaf);
 	pDC->TextOutA(-w/2+10,h/2-40,str);
 
 	CPen pPen[4];
@@ -2088,7 +2142,7 @@ int CMeasure::MeaHuyi()
 	viPrintf(U2751,"*CLS\n");//开关矩阵
 	viPrintf(U2751,"ROUTe:CLOSe (@402,107,304)\n");//发射发，互易和水听器收
 	float Mp=-1;
-	CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+	CreateBurst(f,v/1000,Bwid/1000,Brep);
 	MessageBox("请根据提示选择各个通道的测量区域！");
 	//功放连接R4，发射连接C2，互易连接C4（示波器CH2连接R3），
 	//水听器连接C7（示波器CH1连接R1），示波器CH3接的是电流计
@@ -2121,7 +2175,7 @@ int CMeasure::MeaHuyi()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("\r\n\r\n互易法自动测量灵敏度：\r\n频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n",
+	stemp.Format("\r\n\r\n互易法自动测量灵敏度：\r\n频率范围 %.1fHz~%.1fHz\r\n信号源幅度 %.1fmVpp\r\n",
 	startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
@@ -2145,7 +2199,7 @@ int CMeasure::MeaHuyi()
 		viPrintf(U2751,"*RST\n");//开关矩阵复位
 		viPrintf(U2751,"*CLS\n");//开关矩阵
 		viPrintf(U2751,"ROUTe:CLOSe (@402,107,304)\n");//发射发，水听器收，互易收
-		CreateBurst(f*1000,v/1000,Bwid/1000,Brep);
+		CreateBurst(f,v/1000,Bwid/1000,Brep);
 		viPrintf(vip,":timebase:mode window\n");
 		viPrintf(vip,":timebase:window:position %f\n",zoomPosition[0]);
 		viPrintf(vip,":timebase:window:range %f\n",zoomRange[0]);
@@ -2174,7 +2228,7 @@ int CMeasure::MeaHuyi()
 		viPrintf(vip,":measure:source channel%d\n",3);
 		UI[2]=autoV(3)/Cv;//iHJ
 	
-		float M_j=20*log10(sqrt((u[0]/UI[0])*(u[2]/UI[2])/(u[1]/UI[1])*(d[0]*d[2]/d[1])*(2/(1000*f*1000))*exp(0.0005f*(d[0]+d[2]-d[1]))))-120;
+		float M_j=20*log10(sqrt((u[0]/UI[0])*(u[2]/UI[2])/(u[1]/UI[1])*(d[0]*d[2]/d[1])*(2/(1000*f))*exp(0.0005f*(d[0]+d[2]-d[1]))))-120;
 		//公式中的ruo=1000kg/m3,alpha=0.0005
 		Result[0].push_back(M_j);//水听器接在示波器1通道上
 		huatu_huyi();
@@ -2237,7 +2291,7 @@ void CMeasure::huatu_huyi()
 		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
 		pDC->TextOutA(rect.left-40,y*deltaY-10,str);
 	}
-	str.Format("频率(kHz)");
+	str.Format("频率(Hz)");
 	pDC->TextOutA(100,-50,str);
 	str.Format("灵");
 	pDC->TextOutA(-80,200,str);

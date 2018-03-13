@@ -15,9 +15,6 @@ IMPLEMENT_DYNAMIC(CSetSigDlg, CDialogEx)
 CSetSigDlg::CSetSigDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CSetSigDlg::IDD, pParent)
 {
-	m_startF = startf;
-	m_endF = endf;
-	m_deltaF = deltaf;
 	m_volt = v;
 	m_pulseWid = Bwid;
 	m_pulseRe = Brep;
@@ -39,6 +36,9 @@ void CSetSigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_PulseRep, m_pulseRe);
 	DDX_Text(pDX, IDC_PulseWid, m_pulseWid);
 	DDX_Control(pDX, IDC_OneThirdFreq, m_OneThirdFreq);
+	DDX_Control(pDX, IDC_fUnitS, m_StartfUnit);
+	//  DDX_Control(pDX, IDC_fUnitE, m_EndfUnit);
+	//  DDX_Control(pDX, IDC_fUnitD, m_DeltafUnit);
 }
 
 
@@ -70,14 +70,29 @@ void CSetSigDlg::OnBnClickedSigok()
 		AfxMessageBox("重复周期范围为0.1s~2s！");
 		return;
 	}
-	f=m_startF;
-	startf=m_startF;
-	endf=m_endF;
-	deltaf=m_deltaF;
+	Unit=m_StartfUnit.GetCurSel();
+	if(Unit==-1)
+	{
+		AfxMessageBox("请选择频率的单位！");
+		return;
+	}
+	else if(Unit==0)
+	{
+		startf=m_startF*1000;
+		endf=m_endF*1000;
+		deltaf=m_deltaF*1000;
+	}
+	else
+	{
+		startf=m_startF;
+		endf=m_endF;
+		deltaf=m_deltaF;
+	}
+	f=startf;
 	OneThird_f=(m_OneThirdFreq.GetCheck()==BST_CHECKED)? true:false;
 	if(OneThird_f) 
 	{
-		for(unsigned int i=0;i<31;i++)
+		for(unsigned int i=0;i<34;i++)
 		{
 			if(abs(OneThirdFreq[i]-f)<0.001) 
 			{
@@ -125,6 +140,21 @@ BOOL CSetSigDlg::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 	if(OneThird_f) m_OneThirdFreq.SetCheck(1);
+	if(Unit==-1) m_StartfUnit.SetCurSel(0);
+	else m_StartfUnit.SetCurSel(Unit);
+	if(m_StartfUnit.GetCurSel()==0)
+	{
+		m_startF = startf/1000;
+		m_endF = endf/1000;
+		m_deltaF = deltaf/1000;
+	}
+	else
+	{
+		m_startF = startf;
+		m_endF = endf;
+		m_deltaF = deltaf;
+	}
+	UpdateData(false);
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
 }
