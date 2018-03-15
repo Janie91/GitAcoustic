@@ -263,8 +263,8 @@ float autoV(int chann)
 	float vrange=-1,vtemp=-1;
 	int flag=0;
 	
-	viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-	//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+	//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+	viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
 	
 	while(vtemp==-1||vrange==-1||vtemp==0||vrange==0)
@@ -272,30 +272,30 @@ float autoV(int chann)
 		if(flag>2) break;
 		flag++;
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 
 	while(vtemp>9.0e+036) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	while(vtemp>vrange/8.0*4) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,2*vrange);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	while(vtemp>9.0e+036) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	//波形显示小于一格
 	while(vtemp<vrange/16.0)
@@ -304,21 +304,21 @@ float autoV(int chann)
 		{
 			viPrintf(vip,":channel%d:range 0.016\n",chann);
 			viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-			viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-			//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+			//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+			viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 			break;
 		}
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange/2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	while(vtemp>9.0e+036) 
 	{
 		viPrintf(vip,":channel%d:range %f\n",chann,vrange*2);
 		viQueryf(vip,":channel%d:range?\n","%f\n",chann,&vrange);
-		viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
-		//viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
+		//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);
+		viQueryf(vip,":measure:vpp?\n","%f\n",&vtemp);
 	}
 	//viQueryf(vip,":measure:vrms?\n","%f\n",&vtemp);//有效值不受尖刺波的影响
 	return vtemp;
@@ -627,6 +627,12 @@ void CMeasure::OnBnClickedquitsys()
 	viClose(vig);
 	viClose(vidp);
 	viClose(vidg);
+	if(ChooseItem==5&&status==0)
+	{
+		viPrintf(U2751,"*rst\n");//开关矩阵复位
+		viClose(U2751);
+		viClose(rm);
+	}
 	OnCancel();//因为它是非模态对话框，自己重载了这个函数	
 }
 void CMeasure::PostNcDestroy()
@@ -939,8 +945,8 @@ int CMeasure::MeasureSensity()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("频率范围 %.1fHz~%.1fHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n测量次数 %d次\r\n标准水听器通道 %d",
-		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
+	stemp.Format("频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n测量次数 %d次\r\n标准水听器通道 %d",
+		startf/1000,endf/1000,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
 	isMeasure=true;
@@ -1056,13 +1062,13 @@ void CMeasure::huatu_sensity()
 	{
 		if(endf==startf)
 		{
-			str.Format("%.1f",startf+x);
+			str.Format("%.1f",(startf+x)/1000);
 			pDC->TextOutA((int)(x*deltaX-10),rect.top-15,str);
 		}
 		else
 		{
 			temp=startf+(endf-startf)/50*x;
-			str.Format("%.1f",temp);
+			str.Format("%.1f",temp/1000);
 			pDC->TextOutA((int)(x*deltaX-10),rect.top-15,str);
 		}
 	}
@@ -1073,7 +1079,7 @@ void CMeasure::huatu_sensity()
 		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
 		pDC->TextOutA(rect.left-40,y*deltaY-10,str);
 	}
-	str.Format("频率(Hz)");
+	str.Format("频率(kHz)");
 	pDC->TextOutA(100,-50,str);
 	str.Format("灵");
 	pDC->TextOutA(-80,200,str);
@@ -1160,8 +1166,8 @@ int CMeasure::MeasureResponse()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("测量的频率范围 %.1fHz~%.1fHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
-		startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
+	stemp.Format("测量的频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n脉冲宽度 %.1fms\r\n重复周期 %.1fs\r\n%d次测量\r\n标准水听器通道 %d",
+		startf/1000,endf/1000,v,Bwid,Brep,MeaCount,chaRefer);
 	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
 	SetDlgItemTextA(IDC_showPara,stemp);
 	f=startf;
@@ -1291,13 +1297,13 @@ void CMeasure::huatu_response()
 	{
 		if(endf==startf)
 		{
-			str.Format("%.1f",startf+x);
+			str.Format("%.1f",(startf+x)/1000);
 			pDC->TextOutA((int)(x*deltaX)-10,rect.top+5,str);
 		}
 		else
 		{
 			temp=startf+(endf-startf)/50*x;
-			str.Format("%.1f",temp);
+			str.Format("%.1f",temp/1000);
 			pDC->TextOutA((int)(x*deltaX)-10,rect.top+5,str);
 		}
 	}
@@ -1308,7 +1314,7 @@ void CMeasure::huatu_response()
 		str.Format("%d",50+2*y);//纵轴表示50~250共200个点，而纵轴总共划分出了100格，所以每一格代表2y
 		pDC->TextOutA(rect.left-30,-y*deltaY-10,str);
 	}
-	str.Format("频率(Hz)");
+	str.Format("频率(kHz)");
 	pDC->TextOutA(400,30,str);
 	str.Format("发");
 	pDC->TextOutA(-80,-280,str);
@@ -2175,10 +2181,10 @@ int CMeasure::MeaHuyi()
 	viPrintf(vip,":timebase:mode main\n");
 	viPrintf(vip,":run\n");
 	CString stemp;
-	stemp.Format("\r\n\r\n互易法自动测量灵敏度：\r\n频率范围 %.1fHz~%.1fHz\r\n信号源幅度 %.1fmVpp\r\n",
-	startf,endf,v,Bwid,Brep,MeaCount,chaRefer);
-	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;
+	stemp.Format("\r\n\r\n互易法自动测量灵敏度：\r\n频率范围 %.1fkHz~%.1fkHz\r\n信号源幅度 %.1fmVpp\r\n",
+	startf/1000,endf/1000,v,Bwid,Brep,MeaCount,chaRefer);
 	SetDlgItemTextA(IDC_showPara,stemp);
+	if(MessageBox(stemp,"提示",MB_OKCANCEL)==IDCANCEL) return -1;	
 	f=startf;
 	isMeasure=true;
 	
@@ -2274,13 +2280,13 @@ void CMeasure::huatu_huyi()
 	{
 		if(endf==startf)
 		{
-			str.Format("%.1f",startf+x);
+			str.Format("%.1f",(startf+x)/1000);
 			pDC->TextOutA((int)(x*deltaX-10),rect.top-15,str);
 		}
 		else
 		{
 			temp=startf+(endf-startf)/50*x;
-			str.Format("%.1f",temp);
+			str.Format("%.1f",temp/1000);
 			pDC->TextOutA((int)(x*deltaX-10),rect.top-15,str);
 		}
 	}
@@ -2291,7 +2297,7 @@ void CMeasure::huatu_huyi()
 		str.Format("%d",-150-y);//纵轴表示-150~-250共100个点，而纵轴总共划分出了100格，所以每一格代表y
 		pDC->TextOutA(rect.left-40,y*deltaY-10,str);
 	}
-	str.Format("频率(Hz)");
+	str.Format("频率(kHz)");
 	pDC->TextOutA(100,-50,str);
 	str.Format("灵");
 	pDC->TextOutA(-80,200,str);
